@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <!-- NUOVO: Istruzioni per il browser per non salvare la cache -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turni Boschetto</title>
+  <link rel="stylesheet" href="style_v2.css">
+  <!-- Aggiungi la libreria Supabase -->
+  <!-- NUOVO: Aggiungi la libreria per "fotografare" la tabella per la stampa/condivisione -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- NUOVO: Libreria per generare PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+  <!-- NUOVO: Indicatore di caricamento -->
+  <div id="loading-spinner" class="loader"></div>
+```
+
+  <div id="sidebar">
+    <h2>Personale</h2>
+    <div id="sidebar-content">
+      </div>
+    
+    <hr>
+    
+    <div class="controls">
+      <button class="btn secondary" id="resetBtn">Reset Turni</button>
+      <button id="printBtn" class="btn secondary">Stampa</button>
+      <button id="export-pdf-btn" class="btn secondary">Esporta PDF</button>
+      <button class="btn" id="manageStaffBtn">Gestisci Personale</button>
+    </div>
+
+    <div id="save-status" style="text-align: center; font-size: 11px; color: #666; margin-top: 15px; height: 15px;"></div>
+
+  </div>
+
+  <div id="main">
+    <div class="header-container">
+    <input type="text" id="table-header-title" placeholder="TURNI DAL ... AL ..." class="editable-title">
+  </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Turno / Giorno</th>
+          <th>Lunedì</th>
+          <th>Martedì</th>
+          <th>Mercoledì</th>
+          <th>Giovedì</th>
+          <th>Venerdì</th>
+          <th>Sabato</th>
+          <th>Domenica</th>
+        </tr>
+      </thead>
+      <tbody id="grid"></tbody>
+    </table>
+  </div>
+
+  <!-- Modale per la gestione del personale -->
+  <div id="staff-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-button">&times;</span>
+      <h2>Gestisci Personale</h2>
+      <div id="staff-list-container">
+        <!-- La lista del personale verrà inserita qui -->
+      </div>
+      <form id="staff-form" style="display: none;">
+        <input type="hidden" id="original-name">
+        <input type="text" id="staff-name" placeholder="Nome" required>
+        <input type="number" id="staff-max-shifts" placeholder="Turni max" min="0" style="width: 80px;">
+        <select id="staff-group" required>
+          <option value="" disabled selected>Seleziona Gruppo</option>
+          <option value="Camere">Camere</option>
+          <option value="Cucina">Cucina</option>
+          <option value="Sala">Sala</option>
+        </select>
+        <button type="submit" class="btn">Salva</button>
+        <button type="button" class="btn secondary" id="cancel-edit">Annulla</button>
+      </form>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button class="btn" id="add-new-staff-btn" style="flex-grow: 1;">Aggiungi Persona</button>
+        <button class="btn secondary" id="export-staff-btn" style="flex-grow: 1;">Esporta Personale</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Collega il file JavaScript esterno -->
+  <script src="script.js"></script>
+</body>
+</html>
