@@ -110,15 +110,17 @@ tr { border-bottom: 1px solid #ccc; }
   text-overflow: ellipsis;
   cursor: grab;
   flex-shrink: 0;
+  
+  /* NUOVO: Scudo anti-menu nativo (fondamentale per iPad/Mac) */
   -webkit-touch-callout: none; 
   -webkit-user-select: none;   
   user-select: none;
 }
 /* --- STATO "IN DUBBIO" --- */
 .placed.in-dubbio {
-  background-color: #fff3e0 !important;
-  color: #e65100 !important;
-  border: 1px dashed #e65100 !important;
+
+  color: #000000 !important;
+  
 }
 
 .placed.in-dubbio::after {
@@ -129,14 +131,14 @@ tr { border-bottom: 1px solid #ccc; }
 /* Regola per la stampa fisica */
 @media print {
   .placed.in-dubbio {
-    border: 1px dashed #666 !important;
+    border: none !important;
     color: #333 !important;
   }
 }
 
 /* Regola per l'export PDF */
 body.print-mode .placed.in-dubbio {
-  border: 1px dashed #666 !important;
+  border: none !important;
   color: #333 !important;
 }
 
@@ -206,3 +208,33 @@ body.print-mode #grid tr { height: 132px !important; }
 body.print-mode .cell { min-height: 0 !important; height: 100% !important; border: none !important; display: flex !important; flex-wrap: wrap !important; align-content: flex-start !important; padding: 2px !important; overflow: hidden !important; }
 body.print-mode .cell-counter { display: none !important; }
 body.print-mode .placed { width: 50% !important; font-size: 8.5pt !important; border: none !important; padding: 0 1px !important; margin-bottom: 0 !important; white-space: nowrap !important; line-height: 1.2 !important; }
+
+
+
+/* --- TOAST NOTIFICATION (Fumetto a scomparsa) --- */
+.toast {
+  visibility: hidden;
+  min-width: 200px;
+  background-color: #323232;
+  color: #fff;
+  text-align: center;
+  border-radius: 8px;
+  padding: 12px 20px;
+  position: fixed;
+  z-index: 9999;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+  opacity: 0;
+  transition: opacity 0.3s, bottom 0.3s;
+  pointer-events: none; /* Impedisce che il toast blocchi i clic sotto di lui */
+}
+
+.toast.show {
+  visibility: visible;
+  opacity: 1;
+  bottom: 40px; /* Fa un piccolo "salto" verso l'alto quando compare */
+}
