@@ -331,10 +331,21 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.querySelectorAll('.placed').forEach(p => {
       const cell = p.closest('.cell');
+      const nomeDipendente = p.dataset.name;
+      
+      // Cerchiamo l'identikit del dipendente nell'array dello staff
+      const datiDipendente = staff.find(s => s.name === nomeDipendente);
+
+      // LA NUOVA REGOLA LOGICA
       if (cell && cell.dataset.cellId.includes('camere')) {
-        return; 
+        // Se il dipendente non esiste o il suo gruppo NON è "Camere", ignoriamo il turno
+        if (!datiDipendente || datiDipendente.group !== 'Camere') {
+            return; 
+        }
       }
-      counts[p.dataset.name] = (counts[p.dataset.name] || 0) + 1;
+      
+      // Se passa i controlli, aggiungiamo 1 al contatore
+      counts[nomeDipendente] = (counts[nomeDipendente] || 0) + 1;
     });
 
     document.querySelectorAll(".block").forEach(b => {
