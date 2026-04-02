@@ -23,6 +23,17 @@
 ```
 
   <div id="sidebar">
+    <div id="auth-container" style="margin-bottom: 15px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #f9f9f9;">
+        <div id="login-form">
+            <input type="email" id="login-email" placeholder="Email (Admin)" style="width: 100%; box-sizing: border-box; margin-bottom: 5px; padding: 5px;">
+            <input type="password" id="login-password" placeholder="Password" style="width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 5px;">
+            <button id="btn-login" style="width: 100%; cursor: pointer; padding: 5px; background: #007bff; color: white; border: none; border-radius: 3px;">Accedi per modificare</button>
+        </div>
+        <div id="logout-form" style="display: none; text-align: center;">
+            <p style="font-size: 13px; margin: 0 0 8px 0; color: #28a745;"><strong>🔓 Accesso Admin attivo</strong></p>
+            <button id="btn-logout" style="width: 100%; cursor: pointer; padding: 5px; background: #dc3545; color: white; border: none; border-radius: 3px;">Disconnetti e Blocca</button>
+        </div>
+    </div>
     <h2>Personale</h2>
     <div id="sidebar-content">
       </div>

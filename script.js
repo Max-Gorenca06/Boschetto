@@ -6,6 +6,50 @@ document.addEventListener('DOMContentLoaded', () => {
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bWl4a3dvampkZ2xqY3lueWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjU1MzYsImV4cCI6MjA3NzMwMTUzNn0.Nun5QolQqtGZX61RbC8gFqL6ojA9KmoiZI7T6JtSmss';
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  // --- STATO AUTENTICAZIONE ---
+  let isLoggedIn = false;
+
+  async function controllaStatoLogin() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      isLoggedIn = !!session; // Diventa true se c'è una sessione attiva
+      aggiornaInterfacciaLogin();
+  }
+
+  async function effettuaLogin() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) return showToast("Inserisci email e password.");
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+          showToast("Errore di accesso: credenziali errate.");
+      } else {
+          showToast("Sblocco sistema in corso...");
+          setTimeout(() => location.reload(), 1000); // Ricarica la pagina da Admin
+      }
+  }
+
+  async function effettuaLogout() {
+      await supabaseClient.auth.signOut();
+      showToast("Chiusura sistema in corso...");
+      setTimeout(() => location.reload(), 1000); // Ricarica la pagina da Estraneo
+  }
+
+  function aggiornaInterfacciaLogin() {
+      const loginForm = document.getElementById('login-form');
+      const logoutForm = document.getElementById('logout-form');
+      if (loginForm && logoutForm) {
+          loginForm.style.display = isLoggedIn ? 'none' : 'block';
+          logoutForm.style.display = isLoggedIn ? 'block' : 'none';
+      }
+      
+      // Nascondiamo i bottoni pericolosi se non sei il capo
+      const btnReset = document.getElementById('resetBtn'); 
+      const btnManageStaff = document.getElementById('manageStaffBtn'); 
+      if(btnReset) btnReset.style.display = isLoggedIn ? 'inline-block' : 'none';
+      if(btnManageStaff) btnManageStaff.style.display = isLoggedIn ? 'inline-block' : 'none';
+  }
+
   // ELEMENTI DOM
   const elements = {
     tableHeaderTitle: document.getElementById('table-header-title'),
@@ -39,19 +83,18 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentDraggedElement = null;
   let selectedForPlacement = null;
   let isOffline = false;
+
   // --- CARICAMENTO E SALVATAGGIO (CON LOGICA OFFLINE) ---
-async function loadStaff() {
+  async function loadStaff() {
     const { data, error } = await supabaseClient.from('staff').select('*').order('name');
     
     if (error) {
         console.error("Errore di rete durante il caricamento staff:", error);
-        
-        // Piano B: Cerchiamo il backup nel browser
         const localStaffRaw = localStorage.getItem('staff_backup');
         if (localStaffRaw) {
             try {
                 staff = JSON.parse(localStaffRaw);
-                isOffline = true; // Accendiamo la spia
+                isOffline = true;
                 showToast("Personale caricato offline (Sola lettura) ⚠️");
             } catch (e) {
                 staff = [];
@@ -61,18 +104,15 @@ async function loadStaff() {
             staff = [];
         }
     } else {
-        // Piano A: Internet funziona! Salviamo i dati e facciamo il backup nascosto
         staff = data || [];
         localStorage.setItem('staff_backup', JSON.stringify(staff));
-        isOffline = false; // Spegniamo la spia
+        isOffline = false;
     }
   }
 
   async function loadState() {
-    // 1. Chiediamo i dati a Supabase
     const { data } = await supabaseClient.from('turni_salvati').select('dati_griglia, updated_at').eq('id', 1).single();
     
-    // 2. Cerchiamo se c'è un salvataggio di emergenza nel browser
     const localBackupRaw = localStorage.getItem('turni_backup');
     let localBackup = null;
     if (localBackupRaw) {
@@ -82,28 +122,24 @@ async function loadStaff() {
     let datiDaCaricare = null;
     let orarioDisplay = "";
 
-    // 3. LA SCELTA: Qual è il più recente? (Timestamp)
     const timeSupabase = data && data.updated_at ? new Date(data.updated_at).getTime() : 0;
     const timeLocale = localBackup && localBackup.timestamp ? localBackup.timestamp : 0;
 
     if (timeLocale > timeSupabase) {
-        // Il locale è più fresco! (Ha lavorato offline)
         datiDaCaricare = localBackup.dati_griglia;
         const d = new Date(timeLocale);
         orarioDisplay = `Recuperato backup locale: ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')} ⚠️`;
         elements.saveStatus.style.color = "#e65100";
-        
-        // Sincronizziamo subito Supabase per rimetterlo in pari
-        supabaseClient.from('turni_salvati').update({ dati_griglia: datiDaCaricare, updated_at: new Date(timeLocale) }).eq('id', 1).then();
+        if(isLoggedIn) {
+            supabaseClient.from('turni_salvati').update({ dati_griglia: datiDaCaricare, updated_at: new Date(timeLocale) }).eq('id', 1).then();
+        }
     } else if (data && data.dati_griglia) {
-        // Supabase è aggiornato
         datiDaCaricare = data.dati_griglia;
         const d = new Date(timeSupabase);
         orarioDisplay = `Caricato dal server: ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
         elements.saveStatus.style.color = "#666";
     }
 
-    // 4. DISEGNA LA GRIGLIA
     if (datiDaCaricare) {
       if (datiDaCaricare["_metadata_title"]) {
         elements.tableHeaderTitle.value = datiDaCaricare["_metadata_title"];
@@ -111,7 +147,7 @@ async function loadStaff() {
           elements.startDatePicker.value = datiDaCaricare["_metadata_start_date"];
           const startObj = new Date(datiDaCaricare["_metadata_start_date"]);
           if (!isNaN(startObj.getTime())) aggiornaDateInGriglia(startObj, false); 
-      }
+        }
       }
       Object.entries(datiDaCaricare).forEach(([id, people]) => {
         const cellDiv = document.querySelector(`.cell[data-cell-id="${id}"]`);
@@ -127,6 +163,8 @@ async function loadStaff() {
   }
 
   async function saveState() {
+    if (!isLoggedIn) return; // Blocco di sicurezza extra
+
     elements.saveStatus.textContent = 'Salvataggio...';
     elements.saveStatus.style.color = "#666";
     const data = {};
@@ -140,14 +178,12 @@ async function loadStaff() {
       if (names.length) data[cell.dataset.cellId] = names;
     });
     
-    // 1. SALVATAGGIO PARACADUTE (OFFLINE)
     const backupData = {
         timestamp: new Date().getTime(),
         dati_griglia: data
     };
     localStorage.setItem('turni_backup', JSON.stringify(backupData));
 
-    // 2. TENTATIVO ONLINE SU SUPABASE
     const { error } = await supabaseClient.from('turni_salvati').update({ dati_griglia: data, updated_at: new Date() }).eq('id', 1);
     
     if (error) {
@@ -203,14 +239,16 @@ async function loadStaff() {
     el.className = 'placed';
     el.textContent = person.name;
     el.dataset.name = person.name;
-    el.draggable = true;
+    
+    // LUCCHETTO DRAG & DROP
+    el.draggable = isLoggedIn; 
     
     if (person.inDubbio) {
         el.classList.add('in-dubbio');
     }
 
-    // GESTIONE DUBBIO CON CLIC SINGOLO E TOAST
     el.addEventListener('click', (e) => {
+        if (!isLoggedIn) return; // LUCCHETTO CLICK DUBBIO
         e.stopPropagation(); 
         const giaInDubbio = el.classList.contains('in-dubbio');
         
@@ -225,6 +263,7 @@ async function loadStaff() {
     });
     
     el.addEventListener('dblclick', async () => {
+      if (!isLoggedIn) return showToast("Devi accedere per eliminare turni."); // LUCCHETTO ELIMINAZIONE
       if (confirm(`Rimuovere "${person.name}"?`)) {
         const parent = el.parentElement;
         el.remove();
@@ -235,6 +274,7 @@ async function loadStaff() {
     });
     
     el.addEventListener('dragstart', e => {
+        if (!isLoggedIn) { e.preventDefault(); return; } // LUCCHETTO TRASCINAMENTO
         currentDraggedElement = el;
         e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'move', name: person.name }));
         setTimeout(() => el.classList.add('dragging'), 0);
@@ -258,15 +298,19 @@ async function loadStaff() {
       groups[g].forEach(p => {
         const b = document.createElement('div');
         b.className = 'block';
-        b.draggable = true;
+        
+        // LUCCHETTO SULLA BARRA LATERALE
+        b.draggable = isLoggedIn;
         b.dataset.name = p.name;
         b.innerHTML = `${p.name} <span class="shift-count">[0]</span>`;
         
         b.addEventListener('dragstart', e => {
+            if (!isLoggedIn) { e.preventDefault(); return; } // LUCCHETTO
             e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'new', name: p.name }));
         });
         
         b.addEventListener('click', () => {
+            if (!isLoggedIn) return; // LUCCHETTO
             document.querySelectorAll('.selected-for-placement').forEach(el => el.classList.remove('selected-for-placement'));
             if (selectedForPlacement?.name === p.name) {
                 selectedForPlacement = null;
@@ -306,6 +350,8 @@ async function loadStaff() {
   }
 
   function addPersonToCell(cellDiv, name) {
+    if (!isLoggedIn) return; // LUCCHETTO ASSEGNAZIONE
+
     const parts = cellDiv.dataset.cellId.split('-'); 
     const giorno = parts[0]; 
     const turno = parts[1];  
@@ -340,17 +386,20 @@ async function loadStaff() {
 
   // --- DRAG & DROP EVENTI ---
   elements.gridBody.addEventListener('dragover', e => {
+      if (!isLoggedIn) return;
       e.preventDefault();
       const cell = e.target.closest('.cell');
       if (cell) cell.classList.add('drag-over');
   });
 
   elements.gridBody.addEventListener('dragleave', e => {
+      if (!isLoggedIn) return;
       const cell = e.target.closest('.cell');
       if (cell) cell.classList.remove('drag-over');
   });
 
   elements.gridBody.addEventListener('drop', e => {
+    if (!isLoggedIn) return;
     e.preventDefault();
     const cell = e.target.closest('.cell');
     if (!cell) return;
@@ -370,6 +419,7 @@ async function loadStaff() {
   });
 
   elements.gridBody.addEventListener('click', e => {
+    if (!isLoggedIn) return;
     const cell = e.target.closest('.cell');
     if (cell && selectedForPlacement) {
         addPersonToCell(cell, selectedForPlacement.name);
@@ -378,6 +428,7 @@ async function loadStaff() {
 
   // --- BOTTONI PRINCIPALI ---
   elements.resetBtn.addEventListener('click', async () => {
+    if (!isLoggedIn) return showToast("Devi accedere per resettare i turni.");
     if(confirm('Resettare tutto?')) {
         document.querySelectorAll('.cell').forEach(c => {
             c.innerHTML = '';
@@ -456,9 +507,8 @@ async function loadStaff() {
         });
 
         li.querySelector('.btn-del').addEventListener('click', async () => {
-            // NUOVO: Blocco di sicurezza
             if (isOffline) {
-                alert("Sei offline! Impossibile eliminare il personale. Torna online per fare modifiche.");
+                alert("Sei offline! Impossibile eliminare il personale.");
                 return;
             }
             if(confirm(`Eliminare ${p.name}? Verrà rimosso anche dai turni.`)) {
@@ -494,14 +544,13 @@ async function loadStaff() {
   elements.staffForm.addEventListener('submit', async (e) => {
       e.preventDefault();
     if (isOffline) {
-          alert("Sei offline! Impossibile salvare modifiche al personale. Torna online per riprovare.");
+          alert("Sei offline! Impossibile salvare modifiche al personale.");
           return;
     }
       const id = document.getElementById('original-name').value; 
       const name = document.getElementById('staff-name').value.trim();
       const group = document.getElementById('staff-group').value;
       const maxShifts = document.getElementById('staff-max-shifts').value;
-
 
       if (!name || !group) return alert("Dati mancanti");
 
@@ -558,6 +607,11 @@ async function loadStaff() {
 
   // --- AVVIO APP ---
   async function init() {
+    await controllaStatoLogin(); // IL FRENO A MANO
+
+    document.getElementById('btn-login')?.addEventListener('click', effettuaLogin);
+    document.getElementById('btn-logout')?.addEventListener('click', effettuaLogout);
+
     const spinner = document.getElementById('loading-spinner');
     if(spinner) spinner.style.display = 'block';
     
@@ -566,7 +620,9 @@ async function loadStaff() {
     populateSidebar();
     await loadState();
     
-    elements.tableHeaderTitle.addEventListener('blur', saveState); 
+    elements.tableHeaderTitle.addEventListener('blur', () => {
+        if(isLoggedIn) saveState(); 
+    }); 
     elements.tableHeaderTitle.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') elements.tableHeaderTitle.blur(); 
     });
@@ -576,16 +632,16 @@ async function loadStaff() {
 
   // --- GESTIONE DATE AUTOMATICHE ---
   elements.startDatePicker.addEventListener('change', (e) => {
+      if (!isLoggedIn) return e.preventDefault(); // LUCCHETTO DATA
+      
       let dataSelezionata = new Date(e.target.value);
       if (isNaN(dataSelezionata.getTime())) return;
 
-      // Protezione: se il capo clicca un giorno diverso, il sistema lo riporta al Lunedì di quella settimana
       const giornoDellaSettimana = dataSelezionata.getDay();
       if (giornoDellaSettimana !== 1) { 
           const differenza = dataSelezionata.getDate() - giornoDellaSettimana + (giornoDellaSettimana === 0 ? -6 : 1);
           dataSelezionata = new Date(dataSelezionata.setDate(differenza));
           
-          // Correzione per il fuso orario
           const offset = dataSelezionata.getTimezoneOffset() * 60000;
           e.target.value = new Date(dataSelezionata - offset).toISOString().split('T')[0];
           
@@ -599,7 +655,7 @@ async function loadStaff() {
   function aggiornaDateInGriglia(dataLunedi, aggiornaTitolo) {
       const thElements = document.querySelectorAll('thead th');
       const dataFine = new Date(dataLunedi);
-      dataFine.setDate(dataLunedi.getDate() + 6); // +6 giorni = Domenica
+      dataFine.setDate(dataLunedi.getDate() + 6); 
 
       const formatta = (d) => `${d.getDate()}/${d.getMonth() + 1}`; 
 
@@ -607,7 +663,6 @@ async function loadStaff() {
           elements.tableHeaderTitle.value = `TURNI DAL ${formatta(dataLunedi)} AL ${formatta(dataFine)}`;
       }
 
-      // Scrive il numero di fianco al nome del giorno nelle intestazioni
       for (let i = 0; i < 7; i++) {
           const dataCorrente = new Date(dataLunedi);
           dataCorrente.setDate(dataLunedi.getDate() + i);
