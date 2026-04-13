@@ -179,7 +179,7 @@ body.print-mode .placed.in-dubbio { border: none !important; color: #333 !import
 
 @media (max-width: 768px) {
   /* 1. Nascondiamo le cose da iPad */
-  #sidebar { display: none !important; }
+  #sidebar, table, .header-container, .controls { display: none !important; }
   table { display: none !important; }
   .controls { flex-wrap: wrap; }
   

@@ -53,6 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const btnManageStaff = document.getElementById('manageStaffBtn'); 
       if(btnReset) btnReset.style.display = isLoggedIn ? 'inline-block' : 'none';
       if(btnManageStaff) btnManageStaff.style.display = isLoggedIn ? 'inline-block' : 'none';
+
+      // AGGANCIO MOBILE: Aggiorna l'interfaccia mobile se c'è un cambio di login
+      if (typeof renderMobileView === 'function') renderMobileView();
   }
 
   // ELEMENTI DOM
@@ -165,6 +168,9 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.saveStatus.textContent = orarioDisplay;
     }
     updateAllSidebarCounts();
+    
+    // AGGANCIO MOBILE: Inizializza l'intestazione del telefono al primo caricamento
+    if (typeof updateMobileHeader === 'function') updateMobileHeader();
   }
 
   async function saveState() {
@@ -275,6 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateCellCounter(parent);
         await saveState();
         updateAllSidebarCounts();
+        if (typeof renderMobileView === 'function') renderMobileView(); // Aggiorna cell
       }
     });
     
@@ -398,6 +405,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCellCounter(cellDiv);
     updateAllSidebarCounts();
     saveState();
+    
+    // AGGANCIO MOBILE: Forza la ricarica visiva delle card per mostrare il nuovo inserito
+    if (typeof renderMobileView === 'function') renderMobileView();
   }
 
   // --- DRAG & DROP EVENTI ---
@@ -452,6 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         await saveState();
         updateAllSidebarCounts();
+        if (typeof renderMobileView === 'function') renderMobileView();
     }
   });
 
@@ -565,6 +576,7 @@ elements.exportPdfBtn.addEventListener('click', async () => {
                 populateSidebar(); 
                 populateStaffModal();
                 await saveState(); 
+                if (typeof renderMobileView === 'function') renderMobileView();
             }
         });
         ul.appendChild(li);
@@ -619,6 +631,8 @@ elements.exportPdfBtn.addEventListener('click', async () => {
       document.getElementById('original-name').value = ''; 
       elements.staffForm.style.display = 'none';
       elements.addNewStaffBtn.style.display = 'block';
+      
+      if (typeof renderMobileView === 'function') renderMobileView();
   });
 
   document.addEventListener('keydown', (e) => {
@@ -693,6 +707,9 @@ elements.exportPdfBtn.addEventListener('click', async () => {
 
       aggiornaDateInGriglia(dataSelezionata, true);
       saveState();
+      
+      // AGGANCIO MOBILE: Se la data cambia, ricalcoliamo la visuale telefono
+      if (typeof updateMobileHeader === 'function') updateMobileHeader();
   });
 
   function aggiornaDateInGriglia(dataLunedi, aggiornaTitolo) {
@@ -716,5 +733,159 @@ elements.exportPdfBtn.addEventListener('click', async () => {
       }
   }
 
+
+  // =========================================
+  // MOTORE VISTA TELEFONO (MOBILE-FIRST)
+  // =========================================
+  
+  let mobileCurrentDayIndex = 0;
+
+  function updateMobileHeader() {
+      // Calcola la data esatta in base al Lunedì selezionato e all'indice del giorno mobile
+      const dataRiferimento = new Date(elements.startDatePicker.value);
+      if (isNaN(dataRiferimento.getTime())) return;
+      
+      dataRiferimento.setDate(dataRiferimento.getDate() + mobileCurrentDayIndex);
+      
+      const dayName = giorni[mobileCurrentDayIndex];
+      const headerEl = document.getElementById('mobile-current-day');
+      if(headerEl) {
+          headerEl.textContent = `${dayName} ${dataRiferimento.getDate()}`;
+      }
+      renderMobileView();
+  }
+
+  // Tasti navigazione giorni su Telefono
+  document.getElementById('mobile-prev-day')?.addEventListener('click', () => {
+      mobileCurrentDayIndex = (mobileCurrentDayIndex - 1 + 7) % 7; // Torna indietro in loop
+      updateMobileHeader();
+  });
+
+  document.getElementById('mobile-next-day')?.addEventListener('click', () => {
+      mobileCurrentDayIndex = (mobileCurrentDayIndex + 1) % 7; // Va avanti in loop
+      updateMobileHeader();
+  });
+
+  function renderMobileView() {
+      const container = document.getElementById('mobile-cards-container');
+      if (!container) return;
+      container.innerHTML = ''; // Pulisce le vecchie card
+
+      const giornoKey = giorni[mobileCurrentDayIndex].toLowerCase();
+
+      turni.forEach(turno => {
+          const turnoKey = turno.toLowerCase().replace(/\s+/g, "_");
+          const cellId = `${giornoKey}-${turnoKey}`;
+          const desktopCell = document.querySelector(`.cell[data-cell-id="${cellId}"]`);
+
+          if (!desktopCell) return;
+
+          const card = document.createElement('div');
+          card.className = 'mobile-shift-card';
+
+          // 1. INTESTAZIONE CARD (Es: "Cucina pranzo")
+          const titleDiv = document.createElement('div');
+          titleDiv.className = 'mobile-shift-title';
+          titleDiv.innerHTML = `<span>${turno}</span>`;
+
+          // 2. IL MENU A TENDINA E IL TASTO "+" (Solo se loggati)
+          if (isLoggedIn) {
+              const addWrapper = document.createElement('div');
+              addWrapper.style.display = 'flex';
+              addWrapper.style.alignItems = 'center';
+              addWrapper.style.gap = '5px';
+
+              const select = document.createElement('select');
+              select.style.display = 'none'; // Nascosto all'inizio
+              select.style.padding = '4px';
+              select.style.borderRadius = '4px';
+              select.innerHTML = `<option value="" disabled selected>Aggiungi...</option>`;
+              
+              // Carica tutto il personale nella tendina
+              staff.forEach(p => {
+                  const opt = document.createElement('option');
+                  opt.value = p.name;
+                  opt.textContent = p.name;
+                  select.appendChild(opt);
+              });
+
+              const addBtn = document.createElement('button');
+              addBtn.className = 'mobile-add-btn';
+              addBtn.textContent = '+';
+              
+              // Logica click tasto "+"
+              addBtn.onclick = () => {
+                  select.style.display = select.style.display === 'none' ? 'block' : 'none';
+              };
+
+              // Logica scelta dal menu a tendina
+              select.onchange = () => {
+                  if (select.value) {
+                      addPersonToCell(desktopCell, select.value); // Usa la magia che hai già!
+                      select.value = ""; 
+                      select.style.display = 'none'; // Richiude la tendina
+                  }
+              };
+
+              addWrapper.appendChild(select);
+              addWrapper.appendChild(addBtn);
+              titleDiv.appendChild(addWrapper);
+          }
+          card.appendChild(titleDiv);
+
+          // 3. LISTA DELLE PERSONE ASSEGNATE
+          const people = desktopCell.querySelectorAll('.placed');
+          people.forEach(pEl => {
+              const personName = pEl.dataset.name;
+              const inDubbio = pEl.classList.contains('in-dubbio');
+
+              const row = document.createElement('div');
+              row.className = 'mobile-person-row';
+
+              const nameSpan = document.createElement('span');
+              nameSpan.textContent = personName + (inDubbio ? " ?" : "");
+              if (inDubbio) nameSpan.style.fontWeight = 'bold';
+
+              row.appendChild(nameSpan);
+
+              // Tasto Elimina (X) su mobile
+              if (isLoggedIn) {
+                  const delBtn = document.createElement('button');
+                  delBtn.textContent = '❌';
+                  delBtn.style.background = 'none';
+                  delBtn.style.border = 'none';
+                  delBtn.style.color = 'red';
+                  delBtn.style.padding = '0 5px';
+                  delBtn.style.cursor = 'pointer';
+                  
+                  delBtn.onclick = async () => {
+                      if (confirm(`Rimuovere ${personName} da questo turno?`)) {
+                          pEl.remove();
+                          updateCellCounter(desktopCell);
+                          await saveState();
+                          updateAllSidebarCounts();
+                          renderMobileView(); // Aggiorna graficamente
+                      }
+                  };
+                  row.appendChild(delBtn);
+              }
+              card.appendChild(row);
+          });
+
+          // Se non c'è nessuno, mostra una scritta grigia
+          if (people.length === 0) {
+              const empty = document.createElement('div');
+              empty.style.color = '#999';
+              empty.style.fontSize = '14px';
+              empty.style.padding = '10px 0';
+              empty.textContent = 'Nessuno assegnato';
+              card.appendChild(empty);
+          }
+
+          container.appendChild(card);
+      });
+  }
+
+  // Lancio finale
   init();
 });
