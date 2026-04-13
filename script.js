@@ -1,6 +1,11 @@
 /* global supabase, html2pdf, html2canvas, Capacitor */
 
 document.addEventListener('DOMContentLoaded', () => {
+    MobileDragDrop.polyfill({
+      dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+  });
+  // Questa riga impedisce all'iPad di scorrere la pagina a caso mentre trascini un nome
+  window.addEventListener('touchmove', function() {}, {passive: false});
   // CONFIGURAZIONE SUPABASE
   const SUPABASE_URL = 'https://fwmixkwojjdgljcynycu.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bWl4a3dvampkZ2xqY3lueWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjU1MzYsImV4cCI6MjA3NzMwMTUzNn0.Nun5QolQqtGZX61RbC8gFqL6ojA9KmoiZI7T6JtSmss';
@@ -452,41 +457,68 @@ document.addEventListener('DOMContentLoaded', () => {
 
   elements.printBtn.addEventListener('click', () => window.print());
 
-  elements.exportPdfBtn.addEventListener('click', () => {
+
+
+// RIMOSSE LE COSTANTI GLOBALI: Usiamo direttamente window.Capacitor per evitare crash
+
+elements.exportPdfBtn.addEventListener('click', async () => {
+    // Controllo di sicurezza: verifichiamo di essere davvero sull'iPad
+    if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+        showToast("La condivisione PDF è disponibile solo sull'App per iPad.");
+        return;
+    }
+
     const element = document.getElementById('main');
     const originalTitle = document.title;
     
-    let customName = elements.tableHeaderTitle.value.trim();
-    if (!customName) {
-        customName = `Turni_${new Date().toLocaleDateString('it-IT')}`;
-    } else {
-        customName = customName.replace(/\//g, '-');
-    }
-    
+    let customName = elements.tableHeaderTitle.value.trim() || "Turni";
+    customName = customName.replace(/\//g, '-');
     const finalFilename = `${customName}.pdf`;
-    document.title = finalFilename; 
     
-    window.scrollTo(0, 0);
-    element.scrollLeft = 0;
-    element.scrollTop = 0;
+    showToast("Generazione PDF in corso...");
     
+    // Prepariamo l'interfaccia per la stampa
     document.body.classList.add('print-mode');
-    
-    setTimeout(() => {
-        const opt = {
-            margin: [2, 2, 2, 2],
-            filename: finalFilename, 
-            image: { type: 'jpeg', quality: 1 },
-            html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        };
+    window.scrollTo(0, 0);
 
-        html2pdf().from(element).set(opt).save().then(() => {
-            document.body.classList.remove('print-mode');
-            document.title = originalTitle;
+    const opt = {
+        margin: [2, 2, 2, 2],
+        filename: finalFilename,
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
+    try {
+        // 1. Chiediamo la "Data URI", che è lo standard corretto per html2pdf
+        const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
+
+        // 2. Tagliamo via l'intestazione (data:application/pdf;base64,) per ottenere il codice puro
+        const base64Data = pdfDataUri.split(',')[1];
+
+        // 3. Scriviamo il file chiamando la libreria nativa globalmente. Usiamo 'CACHE' come stringa pura.
+        const savedFile = await window.Capacitor.Plugins.Filesystem.writeFile({
+            path: finalFilename,
+            data: base64Data,
+            directory: 'CACHE' 
         });
-    }, 300); 
-  });
+
+        // 4. Invochiamo il pannello nativo di condivisione Apple
+        await window.Capacitor.Plugins.Share.share({
+            title: 'Esporta Turni',
+            text: 'Ecco il PDF dei turni',
+            url: savedFile.uri,
+            dialogTitle: 'Condividi il PDF'
+        });
+
+    } catch (error) {
+        console.error("Errore esportazione:", error);
+        showToast("Errore durante la creazione del PDF");
+    } finally {
+        document.body.classList.remove('print-mode');
+        document.title = originalTitle;
+    }
+});
 
   // --- MODALE PERSONALE ---
   elements.manageStaffBtn.addEventListener('click', () => {
