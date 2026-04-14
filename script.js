@@ -4,19 +4,18 @@ document.addEventListener('DOMContentLoaded', () => {
     MobileDragDrop.polyfill({
       dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
   });
-  // Questa riga impedisce all'iPad di scorrere la pagina a caso mentre trascini un nome
-  window.addEventListener('touchmove', function() {}, {passive: false});
-  // CONFIGURAZIONE SUPABASE
+  
+  
+  
   const SUPABASE_URL = 'https://fwmixkwojjdgljcynycu.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bWl4a3dvampkZ2xqY3lueWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjU1MzYsImV4cCI6MjA3NzMwMTUzNn0.Nun5QolQqtGZX61RbC8gFqL6ojA9KmoiZI7T6JtSmss';
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // --- STATO AUTENTICAZIONE ---
   let isLoggedIn = false;
 
   async function controllaStatoLogin() {
       const { data: { session } } = await supabaseClient.auth.getSession();
-      isLoggedIn = !!session; // Diventa true se c'è una sessione attiva
+      isLoggedIn = !!session; 
       aggiornaInterfacciaLogin();
   }
 
@@ -30,14 +29,14 @@ document.addEventListener('DOMContentLoaded', () => {
           showToast("Errore di accesso: credenziali errate.");
       } else {
           showToast("Sblocco sistema in corso...");
-          setTimeout(() => location.reload(), 1000); // Ricarica la pagina da Admin
+          setTimeout(() => location.reload(), 1000); 
       }
   }
 
   async function effettuaLogout() {
       await supabaseClient.auth.signOut();
       showToast("Chiusura sistema in corso...");
-      setTimeout(() => location.reload(), 1000); // Ricarica la pagina da Estraneo
+      setTimeout(() => location.reload(), 1000); 
   }
 
   function aggiornaInterfacciaLogin() {
@@ -48,17 +47,14 @@ document.addEventListener('DOMContentLoaded', () => {
           logoutForm.style.display = isLoggedIn ? 'block' : 'none';
       }
       
-      // Nascondiamo i bottoni pericolosi se non sei il capo
       const btnReset = document.getElementById('resetBtn'); 
       const btnManageStaff = document.getElementById('manageStaffBtn'); 
       if(btnReset) btnReset.style.display = isLoggedIn ? 'inline-block' : 'none';
       if(btnManageStaff) btnManageStaff.style.display = isLoggedIn ? 'inline-block' : 'none';
 
-      // AGGANCIO MOBILE: Aggiorna l'interfaccia mobile se c'è un cambio di login
       if (typeof renderMobileView === 'function') renderMobileView();
   }
 
-  // ELEMENTI DOM
   const elements = {
     tableHeaderTitle: document.getElementById('table-header-title'),
     gridBody: document.getElementById("grid"),
@@ -92,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedForPlacement = null;
   let isOffline = false;
 
-  // --- CARICAMENTO E SALVATAGGIO (CON LOGICA OFFLINE) ---
   async function loadStaff() {
     const { data, error } = await supabaseClient.from('staff').select('*').order('name');
     
@@ -169,12 +164,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateAllSidebarCounts();
     
-    // AGGANCIO MOBILE: Inizializza l'intestazione del telefono al primo caricamento
     if (typeof updateMobileHeader === 'function') updateMobileHeader();
   }
 
   async function saveState() {
-    if (!isLoggedIn) return; // Blocco di sicurezza extra
+    if (!isLoggedIn) return; 
 
     elements.saveStatus.textContent = 'Salvataggio...';
     elements.saveStatus.style.color = "#666";
@@ -206,7 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- CREAZIONE GRIGLIA E ELEMENTI ---
   function generateGrid() {
     elements.gridBody.innerHTML = "";
     turni.forEach(turno => {
@@ -251,7 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
     el.textContent = person.name;
     el.dataset.name = person.name;
     
-    // LUCCHETTO DRAG & DROP
     el.draggable = isLoggedIn; 
     
     if (person.inDubbio) {
@@ -259,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     el.addEventListener('click', (e) => {
-        if (!isLoggedIn) return; // LUCCHETTO CLICK DUBBIO
+        if (!isLoggedIn) return; 
         e.stopPropagation(); 
         const giaInDubbio = el.classList.contains('in-dubbio');
         
@@ -273,20 +265,47 @@ document.addEventListener('DOMContentLoaded', () => {
         saveState();
     });
     
-    el.addEventListener('dblclick', async () => {
-      if (!isLoggedIn) return showToast("Devi accedere per eliminare turni."); // LUCCHETTO ELIMINAZIONE
-      if (confirm(`Rimuovere "${person.name}"?`)) {
-        const parent = el.parentElement;
-        el.remove();
-        updateCellCounter(parent);
-        await saveState();
-        updateAllSidebarCounts();
-        if (typeof renderMobileView === 'function') renderMobileView(); // Aggiorna cell
-      }
+    let clickTimer = null; // Il nostro "giudice" del tempo
+
+    el.addEventListener('click', (e) => {
+        if (!isLoggedIn) return; 
+        e.stopPropagation(); 
+        
+        if (clickTimer) {
+            // Se c'è già un timer attivo, significa che hai fatto un SECONDO tocco veloce!
+            clearTimeout(clickTimer);
+            clickTimer = null;
+            
+            // LOGICA DI ELIMINAZIONE (Ex doppio-clic)
+            if (confirm(`Rimuovere "${person.name}"?`)) {
+                const parent = el.parentElement;
+                el.remove();
+                updateCellCounter(parent);
+                saveState().then(() => {
+                    updateAllSidebarCounts();
+                    if (typeof renderMobileView === 'function') renderMobileView(); 
+                });
+            }
+        } else {
+            // È il PRIMO tocco. Facciamo partire un timer di 250 millisecondi.
+            clickTimer = setTimeout(() => {
+                // Se in 250ms non arrivano altri tocchi, allora è un tocco singolo.
+                const giaInDubbio = el.classList.contains('in-dubbio');
+                if (giaInDubbio) {
+                    el.classList.remove('in-dubbio');
+                    showToast(`Turno confermato per ${person.name}`);
+                } else {
+                    el.classList.add('in-dubbio');
+                    showToast(`${person.name} messo in dubbio (?)`);
+                }
+                saveState();
+                clickTimer = null; // Resettiamo il giudice
+            }, 250); 
+        }
     });
     
     el.addEventListener('dragstart', e => {
-        if (!isLoggedIn) { e.preventDefault(); return; } // LUCCHETTO TRASCINAMENTO
+        if (!isLoggedIn) { e.preventDefault(); return; } 
         currentDraggedElement = el;
         e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'move', name: person.name }));
         setTimeout(() => el.classList.add('dragging'), 0);
@@ -299,7 +318,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return el;
   }
 
-  // --- SIDEBAR E CONTEGGI ---
   function populateSidebar() {
     elements.sidebarContent.innerHTML = '';
     const groups = staff.reduce((acc, p) => { (acc[p.group || 'Sala'] ||= []).push(p); return acc; }, {});
@@ -311,18 +329,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const b = document.createElement('div');
         b.className = 'block';
         
-        // LUCCHETTO SULLA BARRA LATERALE
         b.draggable = isLoggedIn;
         b.dataset.name = p.name;
         b.innerHTML = `${p.name} <span class="shift-count">[0]</span>`;
         
         b.addEventListener('dragstart', e => {
-            if (!isLoggedIn) { e.preventDefault(); return; } // LUCCHETTO
+            if (!isLoggedIn) { e.preventDefault(); return; } 
             e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'new', name: p.name }));
         });
         
         b.addEventListener('click', () => {
-            if (!isLoggedIn) return; // LUCCHETTO
+            if (!isLoggedIn) return; 
             document.querySelectorAll('.selected-for-placement').forEach(el => el.classList.remove('selected-for-placement'));
             if (selectedForPlacement?.name === p.name) {
                 selectedForPlacement = null;
@@ -344,19 +361,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.placed').forEach(p => {
       const cell = p.closest('.cell');
       const nomeDipendente = p.dataset.name;
-      
-      // Cerchiamo l'identikit del dipendente nell'array dello staff
       const datiDipendente = staff.find(s => s.name === nomeDipendente);
 
-      // LA NUOVA REGOLA LOGICA
       if (cell && cell.dataset.cellId.includes('camere')) {
-        // Se il dipendente non esiste o il suo gruppo NON è "Camere", ignoriamo il turno
         if (!datiDipendente || datiDipendente.group !== 'Camere') {
             return; 
         }
       }
       
-      // Se passa i controlli, aggiungiamo 1 al contatore
       counts[nomeDipendente] = (counts[nomeDipendente] || 0) + 1;
     });
 
@@ -373,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function addPersonToCell(cellDiv, name) {
-    if (!isLoggedIn) return; // LUCCHETTO ASSEGNAZIONE
+    if (!isLoggedIn) return; 
 
     const parts = cellDiv.dataset.cellId.split('-'); 
     const giorno = parts[0]; 
@@ -406,11 +418,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAllSidebarCounts();
     saveState();
     
-    // AGGANCIO MOBILE: Forza la ricarica visiva delle card per mostrare il nuovo inserito
     if (typeof renderMobileView === 'function') renderMobileView();
   }
 
-  // --- DRAG & DROP EVENTI ---
   elements.gridBody.addEventListener('dragover', e => {
       if (!isLoggedIn) return;
       e.preventDefault();
@@ -452,7 +462,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- BOTTONI PRINCIPALI ---
   elements.resetBtn.addEventListener('click', async () => {
     if (!isLoggedIn) return showToast("Devi accedere per resettare i turni.");
     if(confirm('Resettare tutto?')) {
@@ -468,70 +477,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
   elements.printBtn.addEventListener('click', () => window.print());
 
+  elements.exportPdfBtn.addEventListener('click', async () => {
+      if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+          showToast("La condivisione PDF è disponibile solo sull'App per iPad.");
+          return;
+      }
 
+      const element = document.getElementById('main');
+      const originalTitle = document.title;
+      
+      let customName = elements.tableHeaderTitle.value.trim() || "Turni";
+      customName = customName.replace(/\//g, '-');
+      const finalFilename = `${customName}.pdf`;
+      
+      showToast("Generazione PDF in corso...");
+      
+      document.body.classList.add('print-mode');
+      window.scrollTo(0, 0);
 
-// RIMOSSE LE COSTANTI GLOBALI: Usiamo direttamente window.Capacitor per evitare crash
+      const opt = {
+          margin: [2, 2, 2, 2],
+          filename: finalFilename,
+          image: { type: 'jpeg', quality: 1 },
+          html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
 
-elements.exportPdfBtn.addEventListener('click', async () => {
-    // Controllo di sicurezza: verifichiamo di essere davvero sull'iPad
-    if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
-        showToast("La condivisione PDF è disponibile solo sull'App per iPad.");
-        return;
-    }
+      try {
+          const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
+          const base64Data = pdfDataUri.split(',')[1];
 
-    const element = document.getElementById('main');
-    const originalTitle = document.title;
-    
-    let customName = elements.tableHeaderTitle.value.trim() || "Turni";
-    customName = customName.replace(/\//g, '-');
-    const finalFilename = `${customName}.pdf`;
-    
-    showToast("Generazione PDF in corso...");
-    
-    // Prepariamo l'interfaccia per la stampa
-    document.body.classList.add('print-mode');
-    window.scrollTo(0, 0);
+          const savedFile = await window.Capacitor.Plugins.Filesystem.writeFile({
+              path: finalFilename,
+              data: base64Data,
+              directory: 'CACHE' 
+          });
 
-    const opt = {
-        margin: [2, 2, 2, 2],
-        filename: finalFilename,
-        image: { type: 'jpeg', quality: 1 },
-        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-    };
+          await window.Capacitor.Plugins.Share.share({
+              title: 'Esporta Turni',
+              text: 'Ecco il PDF dei turni',
+              url: savedFile.uri,
+              dialogTitle: 'Condividi il PDF'
+          });
 
-    try {
-        // 1. Chiediamo la "Data URI", che è lo standard corretto per html2pdf
-        const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
+      } catch (error) {
+          console.error("Errore esportazione:", error);
+          showToast("Errore durante la creazione del PDF");
+      } finally {
+          document.body.classList.remove('print-mode');
+          document.title = originalTitle;
+      }
+  });
 
-        // 2. Tagliamo via l'intestazione (data:application/pdf;base64,) per ottenere il codice puro
-        const base64Data = pdfDataUri.split(',')[1];
-
-        // 3. Scriviamo il file chiamando la libreria nativa globalmente. Usiamo 'CACHE' come stringa pura.
-        const savedFile = await window.Capacitor.Plugins.Filesystem.writeFile({
-            path: finalFilename,
-            data: base64Data,
-            directory: 'CACHE' 
-        });
-
-        // 4. Invochiamo il pannello nativo di condivisione Apple
-        await window.Capacitor.Plugins.Share.share({
-            title: 'Esporta Turni',
-            text: 'Ecco il PDF dei turni',
-            url: savedFile.uri,
-            dialogTitle: 'Condividi il PDF'
-        });
-
-    } catch (error) {
-        console.error("Errore esportazione:", error);
-        showToast("Errore durante la creazione del PDF");
-    } finally {
-        document.body.classList.remove('print-mode');
-        document.title = originalTitle;
-    }
-});
-
-  // --- MODALE PERSONALE ---
   elements.manageStaffBtn.addEventListener('click', () => {
       populateStaffModal();
       elements.staffModal.classList.add('show');
@@ -642,7 +639,6 @@ elements.exportPdfBtn.addEventListener('click', async () => {
       }
   });
 
-  // --- FUNZIONE TOAST NOTIFICATION ---
   function showToast(message) {
       let toast = document.getElementById("toast-notification");
       if (!toast) {
@@ -662,9 +658,8 @@ elements.exportPdfBtn.addEventListener('click', async () => {
       }, 2500);
   }
 
-  // --- AVVIO APP ---
   async function init() {
-    await controllaStatoLogin(); // IL FRENO A MANO
+    await controllaStatoLogin(); 
 
     document.getElementById('btn-login')?.addEventListener('click', effettuaLogin);
     document.getElementById('btn-logout')?.addEventListener('click', effettuaLogout);
@@ -687,9 +682,8 @@ elements.exportPdfBtn.addEventListener('click', async () => {
     if(spinner) spinner.style.display = 'none';
   }
 
-  // --- GESTIONE DATE AUTOMATICHE ---
   elements.startDatePicker.addEventListener('change', (e) => {
-      if (!isLoggedIn) return e.preventDefault(); // LUCCHETTO DATA
+      if (!isLoggedIn) return e.preventDefault(); 
       
       let dataSelezionata = new Date(e.target.value);
       if (isNaN(dataSelezionata.getTime())) return;
@@ -708,7 +702,6 @@ elements.exportPdfBtn.addEventListener('click', async () => {
       aggiornaDateInGriglia(dataSelezionata, true);
       saveState();
       
-      // AGGANCIO MOBILE: Se la data cambia, ricalcoliamo la visuale telefono
       if (typeof updateMobileHeader === 'function') updateMobileHeader();
   });
 
@@ -733,7 +726,6 @@ elements.exportPdfBtn.addEventListener('click', async () => {
       }
   }
 
-
   // =========================================
   // MOTORE VISTA TELEFONO (MOBILE-FIRST)
   // =========================================
@@ -741,7 +733,6 @@ elements.exportPdfBtn.addEventListener('click', async () => {
   let mobileCurrentDayIndex = 0;
 
   function updateMobileHeader() {
-      // Calcola la data esatta in base al Lunedì selezionato e all'indice del giorno mobile
       const dataRiferimento = new Date(elements.startDatePicker.value);
       if (isNaN(dataRiferimento.getTime())) return;
       
@@ -755,21 +746,20 @@ elements.exportPdfBtn.addEventListener('click', async () => {
       renderMobileView();
   }
 
-  // Tasti navigazione giorni su Telefono
   document.getElementById('mobile-prev-day')?.addEventListener('click', () => {
-      mobileCurrentDayIndex = (mobileCurrentDayIndex - 1 + 7) % 7; // Torna indietro in loop
+      mobileCurrentDayIndex = (mobileCurrentDayIndex - 1 + 7) % 7; 
       updateMobileHeader();
   });
 
   document.getElementById('mobile-next-day')?.addEventListener('click', () => {
-      mobileCurrentDayIndex = (mobileCurrentDayIndex + 1) % 7; // Va avanti in loop
+      mobileCurrentDayIndex = (mobileCurrentDayIndex + 1) % 7; 
       updateMobileHeader();
   });
 
   function renderMobileView() {
       const container = document.getElementById('mobile-cards-container');
       if (!container) return;
-      container.innerHTML = ''; // Pulisce le vecchie card
+      container.innerHTML = ''; 
 
       const giornoKey = giorni[mobileCurrentDayIndex].toLowerCase();
 
@@ -783,12 +773,10 @@ elements.exportPdfBtn.addEventListener('click', async () => {
           const card = document.createElement('div');
           card.className = 'mobile-shift-card';
 
-          // 1. INTESTAZIONE CARD (Es: "Cucina pranzo")
           const titleDiv = document.createElement('div');
           titleDiv.className = 'mobile-shift-title';
           titleDiv.innerHTML = `<span>${turno}</span>`;
 
-          // 2. IL MENU A TENDINA E IL TASTO "+" (Solo se loggati)
           if (isLoggedIn) {
               const addWrapper = document.createElement('div');
               addWrapper.style.display = 'flex';
@@ -796,12 +784,11 @@ elements.exportPdfBtn.addEventListener('click', async () => {
               addWrapper.style.gap = '5px';
 
               const select = document.createElement('select');
-              select.style.display = 'none'; // Nascosto all'inizio
+              select.style.display = 'none'; 
               select.style.padding = '4px';
               select.style.borderRadius = '4px';
               select.innerHTML = `<option value="" disabled selected>Aggiungi...</option>`;
               
-              // Carica tutto il personale nella tendina
               staff.forEach(p => {
                   const opt = document.createElement('option');
                   opt.value = p.name;
@@ -813,17 +800,15 @@ elements.exportPdfBtn.addEventListener('click', async () => {
               addBtn.className = 'mobile-add-btn';
               addBtn.textContent = '+';
               
-              // Logica click tasto "+"
               addBtn.onclick = () => {
                   select.style.display = select.style.display === 'none' ? 'block' : 'none';
               };
 
-              // Logica scelta dal menu a tendina
               select.onchange = () => {
                   if (select.value) {
-                      addPersonToCell(desktopCell, select.value); // Usa la magia che hai già!
+                      addPersonToCell(desktopCell, select.value); 
                       select.value = ""; 
-                      select.style.display = 'none'; // Richiude la tendina
+                      select.style.display = 'none'; 
                   }
               };
 
@@ -833,7 +818,6 @@ elements.exportPdfBtn.addEventListener('click', async () => {
           }
           card.appendChild(titleDiv);
 
-          // 3. LISTA DELLE PERSONE ASSEGNATE
           const people = desktopCell.querySelectorAll('.placed');
           people.forEach(pEl => {
               const personName = pEl.dataset.name;
@@ -848,7 +832,6 @@ elements.exportPdfBtn.addEventListener('click', async () => {
 
               row.appendChild(nameSpan);
 
-              // Tasto Elimina (X) su mobile
               if (isLoggedIn) {
                   const delBtn = document.createElement('button');
                   delBtn.textContent = '❌';
@@ -864,7 +847,7 @@ elements.exportPdfBtn.addEventListener('click', async () => {
                           updateCellCounter(desktopCell);
                           await saveState();
                           updateAllSidebarCounts();
-                          renderMobileView(); // Aggiorna graficamente
+                          renderMobileView(); 
                       }
                   };
                   row.appendChild(delBtn);
@@ -872,7 +855,6 @@ elements.exportPdfBtn.addEventListener('click', async () => {
               card.appendChild(row);
           });
 
-          // Se non c'è nessuno, mostra una scritta grigia
           if (people.length === 0) {
               const empty = document.createElement('div');
               empty.style.color = '#999';
@@ -886,6 +868,5 @@ elements.exportPdfBtn.addEventListener('click', async () => {
       });
   }
 
-  // Lancio finale
   init();
 });

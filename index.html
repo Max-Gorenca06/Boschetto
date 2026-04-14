@@ -38,6 +38,13 @@
 
     <h3>Personale</h3>
     <div id="sidebar-content"></div>
+    
+    <div class="controls" style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+      <button class="btn secondary" id="resetBtn">Svuota Griglia</button>
+      <button class="btn" id="manageStaffBtn">Gestisci Personale</button>
+      <button class="btn" id="printBtn">Stampa</button>
+      <button class="btn" id="export-pdf-btn">Esporta in PDF</button>
+    </div>
   </div>
 
   <div id="main">
@@ -49,13 +56,6 @@
         <input type="date" id="start-date-picker">
         <span id="save-status" style="margin-left: 15px; font-size: 12px; color: #666;"></span>
       </div>
-    </div>
-
-    <div class="controls" style="margin-bottom: 15px; display: flex; justify-content: center;">
-      <button class="btn secondary" id="resetBtn">Svuota Griglia</button>
-      <button class="btn" id="manageStaffBtn">Gestisci Personale</button>
-      <button class="btn" id="printBtn">Stampa</button>
-      <button class="btn" id="export-pdf-btn">Esporta in PDF</button>
     </div>
 
     <table>
@@ -73,24 +73,22 @@
       </thead>
       <tbody id="grid"></tbody>
     </table>
-  </div>
-<div id="mobile-view">
+
+    <div id="mobile-view">
       <div class="mobile-day-selector">
         <button id="mobile-prev-day" class="btn secondary">&lt;</button>
         <h2 id="mobile-current-day">Oggi - Lunedì 13</h2>
         <button id="mobile-next-day" class="btn secondary">&gt;</button>
       </div>
-      
-      <div id="mobile-cards-container">
-        </div>
+      <div id="mobile-cards-container"></div>
     </div>
-    </div>
+  </div>
+
   <div id="staff-modal" class="modal">
     <div class="modal-content">
       <span class="close-button">&times;</span>
       <h2>Gestisci Personale</h2>
-      <div id="staff-list-container">
-        </div>
+      <div id="staff-list-container"></div>
       <form id="staff-form" style="display: none;">
         <input type="hidden" id="original-name">
         <input type="text" id="staff-name" placeholder="Nome" required>
