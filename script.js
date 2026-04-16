@@ -70,7 +70,14 @@ document.addEventListener('DOMContentLoaded', () => {
           loginForm.style.display = isLoggedIn ? 'none' : 'block';
           logoutForm.style.display = isLoggedIn ? 'block' : 'none';
       }
-      
+      // 1. Prendi il titolo "Personale" (il primo h3 della sidebar)
+      const staffTitle = document.querySelector('#sidebar h3');
+      // 2. Prendi il contenitore dei nomi
+      const sidebarContent = document.getElementById('sidebar-content');
+
+      // Se non siamo loggati, li nascondiamo
+      if (staffTitle) staffTitle.style.display = isLoggedIn ? 'block' : 'none';
+      if (sidebarContent) sidebarContent.style.display = isLoggedIn ? 'block' : 'none';
       const btnReset = document.getElementById('resetBtn'); 
       const btnManageStaff = document.getElementById('manageStaffBtn'); 
       const btnPublish = document.getElementById('publishBtn');
