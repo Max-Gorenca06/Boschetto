@@ -53,11 +53,12 @@
       <button class="btn" id="manageStaffBtn">Gestisci Personale</button>
       <button class="btn" id="printBtn">Stampa</button>
       <button class="btn" id="export-pdf-btn">Esporta in PDF</button>
+      <button class="btn" id="export-ics-btn" style="background: #28a745;">Scarica Calendario (.ics)</button>
     </div>
   </div>
 
   <div id="main">
-    <div class="header-container" style="justify-content: center; margin-bottom: 10px;">
+    <div class="header-container" style="justify-content: center; margin-bottom: 5px; margin-top: -10px;">
       <input type="text" id="table-header-title" class="editable-title" value="TURNI DAL LUNEDÌ ALLA DOMENICA">
     </div>
 
@@ -108,6 +109,23 @@
       </form>
       <div style="display: flex; gap: 10px; margin-top: 15px;">
         <button class="btn" id="add-new-staff-btn" style="flex-grow: 1;">Aggiungi Persona</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ics-modal" class="modal">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <span class="close-button" id="close-ics-modal">&times;</span>
+      <h2>Esporta i tuoi turni</h2>
+      <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Seleziona il tuo nome per scaricare il calendario (.ics) della settimana selezionata.</p>
+      
+      <select id="select-staff-ics" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ccc;">
+          <option value="" disabled selected>Scegli il tuo nome...</option>
+      </select>
+
+      <div style="display: flex; gap: 10px;">
+        <button id="confirm-export-ics" class="btn" style="flex: 1; background: #28a745;">Scarica .ics</button>
+        <button id="cancel-export-ics" class="btn secondary" style="flex: 1;">Annulla</button>
       </div>
     </div>
   </div>

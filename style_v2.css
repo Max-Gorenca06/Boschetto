@@ -21,13 +21,13 @@ html, body {
   box-sizing: border-box;
   flex-shrink: 0;
   height: 100%;
-  -webkit-overflow-scrolling: touch;
+  -webkit-overflow-scrolling: touch; /* Rende fluido lo scorrimento su iPad */
 }
 
 #main {
   flex: 1;
-  padding: 12px;
-  overflow: auto; /* PC scorre la tabella tranquillamente */
+  padding: 12px 12px 2px 12px; /* Ridotto il padding in basso per la Sala Cena */
+  overflow: auto; 
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -58,7 +58,7 @@ tr { border-bottom: 1px solid #ccc; }
 .cell {
   width: 100%;
   height: 100%;
-  min-height: 140px; /* Altezza confortevole per il PC */
+  min-height: 140px; 
   background: #fff;
   display: flex; flex-direction: row; flex-wrap: wrap; align-content: flex-start;
   padding: 2px; padding-bottom: 20px; box-sizing: border-box; position: relative; 
@@ -69,30 +69,30 @@ tr { border-bottom: 1px solid #ccc; }
    ========================================= */
 @media (hover: none) and (min-width: 601px) {
   html, body {
-    position: fixed; /* Inchioda l'app */
+    position: fixed; 
     overflow: hidden;
-    overscroll-behavior: none; /* Spegne il rimbalzo */
-    height: 100%; /* Previene il taglio del fondo */
+    overscroll-behavior: none; 
+    height: 100%; 
   }
   
   #sidebar, #main {
-    padding-top: 25px; /* Spazio Batteria spostato DENTRO per non sfondare lo schermo */
+    padding-top: 25px; 
   }
 
   #main {
-    overflow: hidden; /* Niente scorrimento su iPad */
-    padding-bottom: 5px; /* Riduco sotto per bilanciare la batteria sopra */
+    overflow: hidden; 
+    padding-bottom: 5px; 
   }
 
   table {
-    height: 100% !important; /* Si spande al millimetro nello spazio rimasto */
+    height: 100% !important; 
     flex: 1;
   }
   
-  #grid tr { height: 20%; } /* I 5 turni si dividono equamente */
+  #grid tr { height: 20%; } 
 
   .cell {
-    min-height: 0 !important; /* Togliamo il blocco: le celle si adattano perfette */
+    min-height: 0 !important; 
   }
 }
 
@@ -117,7 +117,7 @@ tr { border-bottom: 1px solid #ccc; }
 #staff-list-container li { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; text-transform: uppercase; font-size: 13px; }
 #staff-form { margin-top: 15px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
 #staff-form input[type="text"], #staff-form input[type="number"], #staff-form select { padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
-.header-container { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 0px; margin-top: 0px; flex-shrink: 0; }
+.header-container { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 5px; margin-top: -10px; flex-shrink: 0; }
 .editable-title { width: 90%; border: none; background: transparent; font-size: 24px; font-weight: bold; text-align: center; color: #1f4e9a; padding: 5px; border-bottom: 2px dashed #ccc; outline: none; text-transform: uppercase; }
 .editable-title:focus { border-bottom: 2px solid #2b8cff; }
 
@@ -130,7 +130,6 @@ tr { border-bottom: 1px solid #ccc; }
   body { position: static !important; overflow: auto !important; height: auto !important; padding-top: 0 !important; }
   #main { overflow: visible !important; }
   
-  /* I PULSANTI NON SONO PIÙ NASCOSTI */
   table, .header-container { display: none !important; }
   #mobile-view { display: flex; }
   
@@ -142,7 +141,7 @@ tr { border-bottom: 1px solid #ccc; }
     width: 280px; height: 100%; z-index: 10000;
     box-shadow: 5px 0 15px rgba(0,0,0,0.5);
     background-color: #fff;
-    padding-top: 40px; /* Spazio per la X */
+    padding-top: 40px; 
   }
   
   #mobile-close-sidebar { display: block !important; position: absolute; top: 5px; right: 15px; }
@@ -158,7 +157,7 @@ tr { border-bottom: 1px solid #ccc; }
 @media print {
   @page { size: A4 landscape; margin: 0; }
   body { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; position: static !important; height: auto !important; }
-  #sidebar, #staff-modal, .loader, .controls, #save-status, .date-picker-container { display: none !important; }
+  #sidebar, #staff-modal, #ics-modal, .loader, .controls, #save-status, .date-picker-container { display: none !important; }
   #main { display: block !important; width: 1120px !important; height: 760px !important; padding: 10px !important; margin: 0 !important; overflow: hidden !important; }
   .header-container { margin: 0 !important; height: 40px !important; flex-direction: row !important; justify-content: center !important; display: flex !important; }
   .editable-title { border-bottom: none !important; font-size: 18px !important; padding: 5px !important; margin: 0 !important; }
@@ -174,7 +173,7 @@ tr { border-bottom: 1px solid #ccc; }
 }
 
 body.print-mode { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; position: static !important; height: auto !important; }
-body.print-mode #sidebar, body.print-mode #staff-modal, body.print-mode .loader, body.print-mode .controls, body.print-mode #save-status, body.print-mode .date-picker-container { display: none !important; }
+body.print-mode #sidebar, body.print-mode #staff-modal, body.print-mode #ics-modal, body.print-mode .loader, body.print-mode .controls, body.print-mode #save-status, body.print-mode .date-picker-container { display: none !important; }
 body.print-mode #main { display: block !important; width: 1120px !important; height: 760px !important; padding: 10px !important; margin: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
 body.print-mode .header-container { margin: 0 !important; height: 40px !important; flex-direction: row !important; justify-content: center !important; display: flex !important; }
 body.print-mode .editable-title { border-bottom: none !important; font-size: 18px !important; padding: 5px !important; margin: 0 !important; }

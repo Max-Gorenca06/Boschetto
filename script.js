@@ -869,5 +869,91 @@ document.addEventListener('DOMContentLoaded', () => {
           sidebar.classList.remove('mobile-open');
       });
   }
+
+  // =========================================
+  // LOGICA ESPORTAZIONE CALENDARIO (.ICS)
+  // =========================================
+  const ORARI_TURNI = {
+      "camere": { start: "093000", end: "120000" },
+      "cucina_pranzo": { start: "100000", end: "150000" },
+      "sala_pranzo": { start: "100000", end: "150000" },
+      "cucina_cena": { start: "183000", end: "000000" },
+      "sala_cena": { start: "183000", end: "000000" }
+  };
+
+  const icsModal = document.getElementById('ics-modal');
+  const selectIcs = document.getElementById('select-staff-ics');
+
+  document.getElementById('export-ics-btn')?.addEventListener('click', () => {
+      selectIcs.innerHTML = '<option value="" disabled selected>Scegli il tuo nome...</option>';
+      staff.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.name;
+          opt.textContent = p.name;
+          selectIcs.appendChild(opt);
+      });
+      icsModal.classList.add('show');
+  });
+
+  if(document.getElementById('close-ics-modal')) {
+      document.getElementById('close-ics-modal').onclick = () => icsModal.classList.remove('show');
+  }
+  if(document.getElementById('cancel-export-ics')) {
+      document.getElementById('cancel-export-ics').onclick = () => icsModal.classList.remove('show');
+  }
+
+  if(document.getElementById('confirm-export-ics')) {
+      document.getElementById('confirm-export-ics').onclick = () => {
+          const nomeSelezionato = selectIcs.value;
+          if (!nomeSelezionato) return alert("Per favore, seleziona un nome.");
+          
+          eseguiEsportazioneICS(nomeSelezionato);
+          icsModal.classList.remove('show');
+      };
+  }
+
+  function eseguiEsportazioneICS(nome) {
+      const dataInizioStr = document.getElementById('start-date-picker').value;
+      if (!dataInizioStr) return alert("Seleziona prima la data della settimana.");
+
+      let icsContent = [
+          "BEGIN:VCALENDAR",
+          "VERSION:2.0",
+          "PRODID:-//TurniBoschetto//IT",
+          "METHOD:PUBLISH"
+      ];
+
+      const dataLunedi = new Date(dataInizioStr);
+
+      document.querySelectorAll('.cell').forEach(cell => {
+          const persone = Array.from(cell.querySelectorAll('.placed')).map(p => p.dataset.name);
+          if (persone.includes(nome)) {
+              const [giornoNome, turnoNome] = cell.dataset.cellId.split('-');
+              const offset = giorni.map(g => g.toLowerCase()).indexOf(giornoNome);
+              const orari = ORARI_TURNI[turnoNome];
+
+              if (offset !== -1 && orari) {
+                  const d = new Date(dataLunedi);
+                  d.setDate(d.getDate() + offset);
+                  const dataISO = d.toISOString().split('T')[0].replace(/-/g, '');
+                  
+                  icsContent.push("BEGIN:VEVENT");
+                  icsContent.push(`SUMMARY:Turno ${turnoNome.replace('_', ' ').toUpperCase()}`);
+                  icsContent.push(`DTSTART:${dataISO}T${orari.start}`);
+                  icsContent.push(`DTEND:${dataISO}T${orari.end}`);
+                  icsContent.push("END:VEVENT");
+              }
+          }
+      });
+
+      icsContent.push("END:VCALENDAR");
+      const blob = new Blob([icsContent.join("\r\n")], { type: "text/calendar" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Turni_${nome}.ics`;
+      link.click();
+      showToast(`Calendario scaricato per ${nome}`);
+  }
+
   init();
 });
