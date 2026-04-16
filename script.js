@@ -16,6 +16,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let isLoggedIn = false;
+  let isOffline = false;
+  window.isHistoricalMode = false;
+  window.assenzeSettimana = {}; 
+
+  // --- FUNZIONE CERVELLO: RACCOGLIE TUTTI I DATI DELLA GRIGLIA ---
+  function getGridData() {
+      const data = {};
+      data["_metadata_title"] = elements.tableHeaderTitle.value;
+      data["_metadata_start_date"] = elements.startDatePicker.value;
+      data["_metadata_assenze"] = window.assenzeSettimana;
+      
+      document.querySelectorAll('.cell').forEach(cell => {
+          const names = Array.from(cell.querySelectorAll('.placed')).map(p => ({ 
+              name: p.dataset.name,
+              inDubbio: p.classList.contains('in-dubbio')
+          }));
+          if (names.length) data[cell.dataset.cellId] = names;
+      });
+      return data;
+  }
 
   async function controllaStatoLogin() {
       const { data: { session } } = await supabaseClient.auth.getSession();
@@ -93,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let staff = [];
   let currentDraggedElement = null;
   let selectedForPlacement = null;
-  let isOffline = false;
 
   async function loadStaff() {
     const { data, error } = await supabaseClient.from('staff').select('*').order('name');
@@ -155,15 +174,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (datiDaCaricare) {
       if (datiDaCaricare["_metadata_title"]) {
         elements.tableHeaderTitle.value = datiDaCaricare["_metadata_title"];
-        if (datiDaCaricare["_metadata_start_date"]) {
-          elements.startDatePicker.value = datiDaCaricare["_metadata_start_date"];
-          const startObj = new Date(datiDaCaricare["_metadata_start_date"]);
-          if (!isNaN(startObj.getTime())) aggiornaDateInGriglia(startObj, false); 
-        }
       }
+      if (datiDaCaricare["_metadata_start_date"]) {
+        elements.startDatePicker.value = datiDaCaricare["_metadata_start_date"];
+        const startObj = new Date(datiDaCaricare["_metadata_start_date"]);
+        if (!isNaN(startObj.getTime())) aggiornaDateInGriglia(startObj, false); 
+      }
+      
+      window.assenzeSettimana = datiDaCaricare["_metadata_assenze"] || {};
+
       Object.entries(datiDaCaricare).forEach(([id, people]) => {
         const cellDiv = document.querySelector(`.cell[data-cell-id="${id}"]`);
-        if (cellDiv && id !== "_metadata_title") {
+        if (cellDiv && !id.startsWith("_metadata")) {
           cellDiv.innerHTML = '';
           people.forEach(p => cellDiv.appendChild(createPlacedElement(p)));
           updateCellCounter(cellDiv);
@@ -177,20 +199,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function saveState() {
-    if (!isLoggedIn) return; 
+    if (!isLoggedIn || window.isHistoricalMode) return; 
 
     elements.saveStatus.textContent = 'Salvataggio...';
     elements.saveStatus.style.color = "#666";
-    const data = {};
-    data["_metadata_title"] = elements.tableHeaderTitle.value;
-    data["_metadata_start_date"] = elements.startDatePicker.value;
-    document.querySelectorAll('.cell').forEach(cell => {
-      const names = Array.from(cell.querySelectorAll('.placed')).map(p => ({ 
-          name: p.dataset.name,
-          inDubbio: p.classList.contains('in-dubbio')
-      }));
-      if (names.length) data[cell.dataset.cellId] = names;
-    });
+    
+    const data = getGridData();
     
     const backupData = {
         timestamp: new Date().getTime(),
@@ -262,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let clickTimer = null; 
 
     el.addEventListener('click', (e) => {
-        if (!isLoggedIn) return; 
+        if (!isLoggedIn || window.isHistoricalMode) return; 
         e.stopPropagation(); 
         
         if (clickTimer) {
@@ -295,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     el.addEventListener('dragstart', e => {
-        if (!isLoggedIn) { e.preventDefault(); return; } 
+        if (!isLoggedIn || window.isHistoricalMode) { e.preventDefault(); return; } 
         currentDraggedElement = el;
         e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'move', name: person.name }));
         setTimeout(() => el.classList.add('dragging'), 0);
@@ -324,12 +338,12 @@ document.addEventListener('DOMContentLoaded', () => {
         b.innerHTML = `${p.name} <span class="shift-count">[0]</span>`;
         
         b.addEventListener('dragstart', e => {
-            if (!isLoggedIn) { e.preventDefault(); return; } 
+            if (!isLoggedIn || window.isHistoricalMode) { e.preventDefault(); return; } 
             e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'new', name: p.name }));
         });
         
         b.addEventListener('click', () => {
-            if (!isLoggedIn) return; 
+            if (!isLoggedIn || window.isHistoricalMode) return; 
             document.querySelectorAll('.selected-for-placement').forEach(el => el.classList.remove('selected-for-placement'));
             if (selectedForPlacement?.name === p.name) {
                 selectedForPlacement = null;
@@ -376,22 +390,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function addPersonToCell(cellDiv, name) {
     if (!isLoggedIn) return; 
+    if (window.isHistoricalMode) return alert("⚠️ Sei in Modalità Archivio. Clicca 'Clona per oggi' se vuoi modificare questa griglia.");
 
     const parts = cellDiv.dataset.cellId.split('-'); 
     const giorno = parts[0]; 
     const turno = parts[1];  
     const fasciaSelezionata = fasceOrarie[turno]; 
 
-    // --- CONTROLLO RICHIESTE / ASSENZE CON OVERRIDE ---
     if (window.assenzeSettimana && window.assenzeSettimana[name]) {
         if (window.assenzeSettimana[name].includes(`${giorno}-tutto_il_giorno`) || 
             window.assenzeSettimana[name].includes(`${giorno}-${turno}`)) {
             
             const conferma = confirm(`⚠️ RICHIESTA/ASSENZA REGISTRATA:\n\n${name} ha un blocco impostato per questo giorno/turno.\n\nVuoi forzare l'inserimento nel turno lo stesso?`);
-            if (!conferma) return; // Si ferma fisicamente SOLO se la Lu clicca "Annulla"
+            if (!conferma) return; 
         }
     }
-    // --------------------------------------------------
 
     let conflittoTrovato = false;
     let nomeTurnoConflitto = "";
@@ -681,7 +694,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if(spinner) spinner.style.display = 'none';
   }
 
-  elements.startDatePicker.addEventListener('change', (e) => {
+  // --- MACCHINA DEL TEMPO E CLONAZIONE ---
+  elements.startDatePicker.addEventListener('change', async (e) => {
       if (!isLoggedIn) return e.preventDefault(); 
       
       let dataSelezionata = new Date(e.target.value);
@@ -691,17 +705,107 @@ document.addEventListener('DOMContentLoaded', () => {
       if (giornoDellaSettimana !== 1) { 
           const differenza = dataSelezionata.getDate() - giornoDellaSettimana + (giornoDellaSettimana === 0 ? -6 : 1);
           dataSelezionata = new Date(dataSelezionata.setDate(differenza));
-          
           const offset = dataSelezionata.getTimezoneOffset() * 60000;
           e.target.value = new Date(dataSelezionata - offset).toISOString().split('T')[0];
-          
-          showToast("Data agganciata in automatico al Lunedì della settimana!");
       }
 
-      aggiornaDateInGriglia(dataSelezionata, true);
-      saveState();
+      const dataCercataStr = e.target.value;
+
+      // Calcoliamo il lunedì della settimana corrente reale (Oggi)
+      let oggi = new Date();
+      let giornoOggi = oggi.getDay();
+      let diffOggi = oggi.getDate() - giornoOggi + (giornoOggi === 0 ? -6 : 1);
+      let lunediCorrente = new Date(oggi.setDate(diffOggi));
+      lunediCorrente.setHours(0,0,0,0);
+
+      let dataSceltaObj = new Date(dataSelezionata);
+      dataSceltaObj.setHours(0,0,0,0);
+
+      const { data: activeDraft } = await supabaseClient.from('turni_salvati').select('dati_griglia').eq('id', 1).single();
+      const dataBozzaAttiva = activeDraft?.dati_griglia?.["_metadata_start_date"];
+
+      const isPast = dataSceltaObj < lunediCorrente;
+
+      // 1. È la bozza su cui stavamo lavorando?
+      if (dataCercataStr === dataBozzaAttiva) {
+          window.isHistoricalMode = false;
+          document.getElementById('historical-banner').style.display = 'none';
+          await loadState(); 
+          showToast("Bozza attiva caricata 📝");
+      } else {
+          // 2. Se non è la bozza, puliamo lo schermo e cerchiamo in Archivio (sia per il passato che per il futuro/presente!)
+          document.querySelectorAll('.cell').forEach(c => { c.innerHTML = ''; updateCellCounter(c); });
+          window.assenzeSettimana = {};
+          
+          const { data: archive } = await supabaseClient.from('storico_turni').select('dati_griglia').eq('id', dataCercataStr).single();
+
+          if (archive && archive.dati_griglia) {
+              const dati = archive.dati_griglia;
+              Object.entries(dati).forEach(([id, people]) => {
+                  const cellDiv = document.querySelector(`.cell[data-cell-id="${id}"]`);
+                  if (cellDiv && !id.startsWith("_metadata")) {
+                      people.forEach(p => cellDiv.appendChild(createPlacedElement(p)));
+                      updateCellCounter(cellDiv);
+                  }
+              });
+              window.assenzeSettimana = dati["_metadata_assenze"] || {};
+              showToast("Dati recuperati dall'archivio 🕰️");
+          } else {
+              showToast("Nuova settimana, pronta per l'inserimento ✏️");
+          }
+
+          // 3. È veramente passato? Solo allora alziamo gli scudi (Sola lettura e Banner Giallo)
+          if (isPast) {
+              window.isHistoricalMode = true;
+              document.getElementById('historical-banner').style.display = 'block';
+          } else {
+              window.isHistoricalMode = false;
+              document.getElementById('historical-banner').style.display = 'none';
+              // RIMOZIONE DELLO SCOGLIO: Nessun salvataggio distruttivo in automatico qui.
+          }
+      }
       
+      aggiornaDateInGriglia(dataSelezionata, true);
       if (typeof updateMobileHeader === 'function') updateMobileHeader();
+  });
+
+  // LOGICA DEL PULSANTE CLONA (DEFINITIVA E TOTALMENTE SINCRONIZZATA)
+  document.getElementById('clone-week-btn')?.addEventListener('click', async () => {
+      if(confirm("Vuoi trasportare questa griglia per usarla come base dei nuovi turni?")) {
+          
+          window.isHistoricalMode = false; // Sblocca la griglia
+          document.getElementById('historical-banner').style.display = 'none';
+          
+          let oggi = new Date();
+          let giorno = oggi.getDay();
+          
+          let diff = oggi.getDate() - giorno + (giorno === 0 ? -6 : 1);
+          if (giorno === 6 || giorno === 0) { diff += 7; }
+          
+          let lunediTarget = new Date(oggi.setDate(diff));
+          lunediTarget.setHours(0,0,0,0);
+          
+          const offset = lunediTarget.getTimezoneOffset() * 60000;
+          const targetStr = new Date(lunediTarget - offset).toISOString().split('T')[0];
+          
+          // 1. Aggiorniamo a schermo la Data
+          elements.startDatePicker.value = targetStr;
+          
+          // 2. Aggiorniamo a schermo il Titolo
+          aggiornaDateInGriglia(lunediTarget, true);
+          
+          // 3. Forziamo il salvataggio totale tramite il Cervello
+          // Essendo a schermo i blocchetti vecchi e i titoli nuovi, saveState impacchetta tutto
+          // e lo invia correttamente SIA al Local Storage che a Supabase.
+          await saveState();
+          
+          // 4. Puliamo tutto visivamente e diciamo al programma di rileggere dal database 
+          // per riattivare i blocchi (drag & drop) freschi
+          document.querySelectorAll('.cell').forEach(c => { c.innerHTML = ''; updateCellCounter(c); });
+          await loadState();
+
+          showToast(giorno === 6 || giorno === 0 ? "Clonata per la PROSSIMA settimana! ✨" : "Settimana clonata con successo! ✨");
+      }
   });
 
   function aggiornaDateInGriglia(dataLunedi, aggiornaTitolo) {
@@ -829,7 +933,6 @@ document.addEventListener('DOMContentLoaded', () => {
               nameSpan.textContent = personName + (inDubbio ? " ?" : "");
               if (inDubbio) nameSpan.style.fontWeight = 'bold';
 
-              // 1. LOGICA DEL DUBBIO (TAP SUL NOME)
               if (isLoggedIn) {
                   nameSpan.style.cursor = 'pointer';
                   nameSpan.style.padding = '5px 10px';
@@ -851,7 +954,6 @@ document.addEventListener('DOMContentLoaded', () => {
               }
               row.appendChild(nameSpan);
 
-              // 2. LOGICA DEL TASTO ELIMINA
               if (isLoggedIn) {
                   const delBtn = document.createElement('button');
                   delBtn.textContent = '❌';
@@ -889,7 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================
-  // LOGICA MENU HAMBURGER (TELEFONO)
+  // LOGICA MENU HAMBURGER E ESPORTAZIONI
   // =========================================
   const mobileMenuBtn = document.getElementById('mobile-menu-btn');
   const sidebar = document.getElementById('sidebar');
@@ -907,9 +1009,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
-  // =========================================
-  // LOGICA ESPORTAZIONE CALENDARIO (.ICS) LIVE
-  // =========================================
   const icsModal = document.getElementById('ics-modal');
   const selectIcs = document.getElementById('select-staff-ics');
 
@@ -943,54 +1042,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function iscrivitiAlCalendarioLive(nome) {
       const baseUrl = "fwmixkwojjdgljcynycu.supabase.co/functions/v1/calendario_live";
-      
-      // Genera il link con webcal per forzare l'apertura in Calendario
       const webcalUrl = `webcal://${baseUrl}?nome=${encodeURIComponent(nome)}`;
-      
-      // Apri automaticamente il link webcal
       window.location.href = webcalUrl;
-
-      // Fornisci un'alternativa per chi usa Google Calendar da Desktop
       const httpsUrl = `https://${baseUrl}?nome=${encodeURIComponent(nome)}`;
       setTimeout(() => {
-          prompt(`Se l'App Calendario non si è aperta da sola, copia questo link e usalo per iscriverti (Es: Aggiungi tramite URL):`, httpsUrl);
+          prompt(`Se l'App Calendario non si è aperta da sola, copia questo link e usalo per iscriverti:`, httpsUrl);
       }, 500);
   }
 
   // =========================================
-  // LOGICA PUBBLICAZIONE (SLOT 2)
+  // LOGICA PUBBLICAZIONE E ARCHIVIAZIONE
   // =========================================
   document.getElementById('publishBtn')?.addEventListener('click', async () => {
-      if (!isLoggedIn) return; // Sicurezza aggiuntiva
+      if (!isLoggedIn) return; 
       
       if (confirm("Sei sicuro di voler PUBBLICARE questi turni?\n\nI calendari dei dipendenti si aggiorneranno automaticamente con questa versione.")) {
-          
           showToast("Pubblicazione in corso...");
-          
-          // 1. Raccogliamo i dati che vedi a schermo in questo momento
-          const data = {};
-          data["_metadata_title"] = elements.tableHeaderTitle.value;
-          data["_metadata_start_date"] = elements.startDatePicker.value;
-          document.querySelectorAll('.cell').forEach(cell => {
-              const names = Array.from(cell.querySelectorAll('.placed')).map(p => ({ 
-                  name: p.dataset.name,
-                  inDubbio: p.classList.contains('in-dubbio')
-              }));
-              if (names.length) data[cell.dataset.cellId] = names;
-          });
+          const data = getGridData(); 
 
-          // 2. Usiamo "upsert" per salvare o sovrascrivere la riga con ID = 2
           const { error } = await supabaseClient.from('turni_salvati').upsert({ 
               id: 2, 
               dati_griglia: data, 
               updated_at: new Date() 
           });
+
+          if (data["_metadata_start_date"]) {
+              await supabaseClient.from('storico_turni').upsert({ 
+                  id: data["_metadata_start_date"], 
+                  dati_griglia: data 
+              });
+          }
           
           if (error) {
               console.error("Errore pubblicazione:", error);
               alert("Errore di rete durante la pubblicazione. Riprova.");
           } else {
-              showToast("Turni pubblicati con successo! 🚀");
+              showToast("Turni pubblicati e archiviati! 🚀");
           }
       }
   });
@@ -998,55 +1085,23 @@ document.addEventListener('DOMContentLoaded', () => {
   //=========================================
   // LOGICA OFFLINE-ONLINE
   //========================================= 
-
-  // Sensore 1: Quando la rete sparisce
   window.addEventListener('offline', () => {
       showToast("Sei offline. Le modifiche verranno salvate solo su questo dispositivo ⚠️");
   });
 
-  // Sensore 2: Quando la rete torna
   window.addEventListener('online', async () => {
       if (!isLoggedIn) return; 
-
       showToast("Wi-Fi tornato! Sincronizzazione in corso... ⏳");
       await saveState();
       showToast("Sincronizzazione completata ✅");
   });
 
   // =========================================
-  // LOGICA ASSENZE (MENU A TENDINA) E SALVATAGGIO
+  // LOGICA ASSENZE (MENU A TENDINA) 
   // =========================================
-  window.assenzeSettimana = {}; // Memoria delle assenze
-
-  // Intercettiamo i salvataggi originali
-  const originalSaveState = saveState;
-  saveState = async function() {
-      // Quando salviamo la griglia, iniettiamo dentro anche le assenze
-      const currentData = await supabaseClient.from('turni_salvati').select('dati_griglia').eq('id', 1).single();
-      if (currentData.data && currentData.data.dati_griglia) {
-          currentData.data.dati_griglia["_metadata_assenze"] = window.assenzeSettimana;
-          await supabaseClient.from('turni_salvati').update({ dati_griglia: currentData.data.dati_griglia }).eq('id', 1);
-      }
-      return originalSaveState.apply(this, arguments);
-  };
-
-  const originalLoadState = loadState;
-  loadState = async function() {
-      await originalLoadState.apply(this, arguments);
-      // Quando carichiamo la griglia, peschiamo le assenze
-      const dbId = isLoggedIn ? 1 : 2;
-      const { data } = await supabaseClient.from('turni_salvati').select('dati_griglia').eq('id', dbId).single();
-      if (data && data.dati_griglia && data.dati_griglia["_metadata_assenze"]) {
-          window.assenzeSettimana = data.dati_griglia["_metadata_assenze"];
-      } else {
-          window.assenzeSettimana = {};
-      }
-  };
-
-  // Funzionamento Finestra
   const absencesModal = document.getElementById('absences-modal');
   document.getElementById('open-absences-btn')?.addEventListener('click', () => {
-      elements.staffModal.classList.remove('show'); // Chiude gestisci personale
+      elements.staffModal.classList.remove('show'); 
       popolaTendinaAssenze();
       aggiornaListaAssenze();
       absencesModal.classList.add('show');
@@ -1080,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const blocco = `${giorno}-${turno}`;
       if (!window.assenzeSettimana[nome].includes(blocco)) {
           window.assenzeSettimana[nome].push(blocco);
-          saveState(); // Salva nel database
+          saveState(); 
           aggiornaListaAssenze();
           showToast(`Nota impostata per ${nome}`);
       }
