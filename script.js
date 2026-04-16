@@ -912,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function iscrivitiAlCalendarioLive(nome) {
-      const baseUrl = "fwmixkwojjdgljcynycu.supabase.co/functions/v1/calendario";
+      const baseUrl = "fwmixkwojjdgljcynycu.supabase.co/functions/v1/calendario_live";
       
       // Genera il link con webcal per forzare l'apertura in Calendario
       const webcalUrl = `webcal://${baseUrl}?nome=${encodeURIComponent(nome)}`;
