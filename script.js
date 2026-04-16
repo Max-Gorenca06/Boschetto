@@ -53,8 +53,11 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const btnReset = document.getElementById('resetBtn'); 
       const btnManageStaff = document.getElementById('manageStaffBtn'); 
+      const btnPublish = document.getElementById('publishBtn');
+
       if(btnReset) btnReset.style.display = isLoggedIn ? 'inline-block' : 'none';
       if(btnManageStaff) btnManageStaff.style.display = isLoggedIn ? 'inline-block' : 'none';
+      if(btnPublish) btnPublish.style.display = isLoggedIn ? 'inline-block' : 'none';
 
       if (typeof renderMobileView === 'function') renderMobileView();
   }
@@ -118,7 +121,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadState() {
-    const { data } = await supabaseClient.from('turni_salvati').select('dati_griglia, updated_at').eq('id', 1).single();
+    // IL BIVIO LOGICO: Il capo vede la Bozza (1), gli altri vedono la Vetrina (2)
+    const databaseId = isLoggedIn ? 1 : 2;
+
+    const { data } = await supabaseClient.from('turni_salvati').select('dati_griglia, updated_at').eq('id', databaseId).single();
     
     const localBackupRaw = localStorage.getItem('turni_backup');
     let localBackup = null;
@@ -193,6 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     localStorage.setItem('turni_backup', JSON.stringify(backupData));
 
+    // Il salvataggio automatico avviene sempre e solo sulla Bozza (ID: 1)
     const { error } = await supabaseClient.from('turni_salvati').update({ dati_griglia: data, updated_at: new Date() }).eq('id', 1);
     
     if (error) {
@@ -871,16 +878,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================
-  // LOGICA ESPORTAZIONE CALENDARIO (.ICS)
+  // LOGICA ESPORTAZIONE CALENDARIO (.ICS) LIVE
   // =========================================
-  const ORARI_TURNI = {
-      "camere": { start: "093000", end: "120000" },
-      "cucina_pranzo": { start: "100000", end: "150000" },
-      "sala_pranzo": { start: "100000", end: "150000" },
-      "cucina_cena": { start: "183000", end: "000000" },
-      "sala_cena": { start: "183000", end: "000000" }
-  };
-
   const icsModal = document.getElementById('ics-modal');
   const selectIcs = document.getElementById('select-staff-ics');
 
@@ -907,53 +906,64 @@ document.addEventListener('DOMContentLoaded', () => {
           const nomeSelezionato = selectIcs.value;
           if (!nomeSelezionato) return alert("Per favore, seleziona un nome.");
           
-          eseguiEsportazioneICS(nomeSelezionato);
+          iscrivitiAlCalendarioLive(nomeSelezionato);
           icsModal.classList.remove('show');
       };
   }
 
-  function eseguiEsportazioneICS(nome) {
-      const dataInizioStr = document.getElementById('start-date-picker').value;
-      if (!dataInizioStr) return alert("Seleziona prima la data della settimana.");
+  function iscrivitiAlCalendarioLive(nome) {
+      const baseUrl = "fwmixkwojjdgljcynycu.supabase.co/functions/v1/calendario";
+      
+      // Genera il link con webcal per forzare l'apertura in Calendario
+      const webcalUrl = `webcal://${baseUrl}?nome=${encodeURIComponent(nome)}`;
+      
+      // Apri automaticamente il link webcal
+      window.location.href = webcalUrl;
 
-      let icsContent = [
-          "BEGIN:VCALENDAR",
-          "VERSION:2.0",
-          "PRODID:-//TurniBoschetto//IT",
-          "METHOD:PUBLISH"
-      ];
-
-      const dataLunedi = new Date(dataInizioStr);
-
-      document.querySelectorAll('.cell').forEach(cell => {
-          const persone = Array.from(cell.querySelectorAll('.placed')).map(p => p.dataset.name);
-          if (persone.includes(nome)) {
-              const [giornoNome, turnoNome] = cell.dataset.cellId.split('-');
-              const offset = giorni.map(g => g.toLowerCase()).indexOf(giornoNome);
-              const orari = ORARI_TURNI[turnoNome];
-
-              if (offset !== -1 && orari) {
-                  const d = new Date(dataLunedi);
-                  d.setDate(d.getDate() + offset);
-                  const dataISO = d.toISOString().split('T')[0].replace(/-/g, '');
-                  
-                  icsContent.push("BEGIN:VEVENT");
-                  icsContent.push(`SUMMARY:Turno ${turnoNome.replace('_', ' ').toUpperCase()}`);
-                  icsContent.push(`DTSTART:${dataISO}T${orari.start}`);
-                  icsContent.push(`DTEND:${dataISO}T${orari.end}`);
-                  icsContent.push("END:VEVENT");
-              }
-          }
-      });
-
-      icsContent.push("END:VCALENDAR");
-      const blob = new Blob([icsContent.join("\r\n")], { type: "text/calendar" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `Turni_${nome}.ics`;
-      link.click();
-      showToast(`Calendario scaricato per ${nome}`);
+      // Fornisci un'alternativa per chi usa Google Calendar da Desktop
+      const httpsUrl = `https://${baseUrl}?nome=${encodeURIComponent(nome)}`;
+      setTimeout(() => {
+          prompt(`Se l'App Calendario non si è aperta da sola, copia questo link e usalo per iscriverti (Es: Aggiungi tramite URL):`, httpsUrl);
+      }, 500);
   }
+
+  // =========================================
+  // LOGICA PUBBLICAZIONE (SLOT 2)
+  // =========================================
+  document.getElementById('publishBtn')?.addEventListener('click', async () => {
+      if (!isLoggedIn) return; // Sicurezza aggiuntiva
+      
+      if (confirm("Sei sicuro di voler PUBBLICARE questi turni?\n\nI calendari dei dipendenti si aggiorneranno automaticamente con questa versione.")) {
+          
+          showToast("Pubblicazione in corso...");
+          
+          // 1. Raccogliamo i dati che vedi a schermo in questo momento
+          const data = {};
+          data["_metadata_title"] = elements.tableHeaderTitle.value;
+          data["_metadata_start_date"] = elements.startDatePicker.value;
+          document.querySelectorAll('.cell').forEach(cell => {
+              const names = Array.from(cell.querySelectorAll('.placed')).map(p => ({ 
+                  name: p.dataset.name,
+                  inDubbio: p.classList.contains('in-dubbio')
+              }));
+              if (names.length) data[cell.dataset.cellId] = names;
+          });
+
+          // 2. Usiamo "upsert" per salvare o sovrascrivere la riga con ID = 2
+          const { error } = await supabaseClient.from('turni_salvati').upsert({ 
+              id: 2, 
+              dati_griglia: data, 
+              updated_at: new Date() 
+          });
+          
+          if (error) {
+              console.error("Errore pubblicazione:", error);
+              alert("Errore di rete durante la pubblicazione. Riprova.");
+          } else {
+              showToast("Turni pubblicati con successo! 🚀");
+          }
+      }
+  });
 
   init();
 });
