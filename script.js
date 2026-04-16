@@ -548,9 +548,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   });
 
-  elements.manageStaffBtn.addEventListener('click', () => {
+    elements.manageStaffBtn.addEventListener('click', () => {
       populateStaffModal();
       elements.staffModal.classList.add('show');
+      
+      // NUOVO: Chiude la barra laterale sul telefono automaticamente
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.classList.remove('mobile-open');
   });
   elements.closeModalBtn.addEventListener('click', () => elements.staffModal.classList.remove('show'));
   
@@ -1019,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const icsModal = document.getElementById('ics-modal');
   const selectIcs = document.getElementById('select-staff-ics');
 
-  document.getElementById('export-ics-btn')?.addEventListener('click', () => {
+document.getElementById('export-ics-btn')?.addEventListener('click', () => {
       selectIcs.innerHTML = '<option value="" disabled selected>Scegli il tuo nome...</option>';
       staff.forEach(p => {
           const opt = document.createElement('option');
@@ -1028,6 +1032,10 @@ document.addEventListener('DOMContentLoaded', () => {
           selectIcs.appendChild(opt);
       });
       icsModal.classList.add('show');
+      
+      // NUOVO: Chiude la barra laterale sul telefono automaticamente
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.classList.remove('mobile-open');
   });
 
   if(document.getElementById('close-ics-modal')) {

@@ -109,10 +109,13 @@ tr { border-bottom: 1px solid #ccc; }
 .limit-reached { color: red; font-weight: bold; }
 .btn { background: #2b8cff; color: #fff; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-weight: 600; }
 .btn.secondary { background: #fff; color: #2b8cff; border: 1px solid #2b8cff; }
-.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+
+/* MODALE AGGIORNATA PER LO SCORRIMENTO */
+.modal { display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
 .modal.show { display: flex; }
-.modal-content { background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; width: 70%; max-width: 800px; border-radius: 8px; position: relative; }
-.close-button { position: absolute; right: 15px; top: 10px; font-size: 28px; cursor: pointer; }
+.modal-content { background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; width: 70%; max-width: 800px; border-radius: 8px; position: relative; max-height: 85vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.close-button { position: absolute; right: 15px; top: 10px; font-size: 28px; cursor: pointer; z-index: 10; }
+
 #staff-list-container ul { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; row-gap: 0; padding: 0; list-style: none; }
 #staff-list-container li { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; text-transform: uppercase; font-size: 13px; }
 #staff-form { margin-top: 15px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
@@ -151,6 +154,28 @@ tr { border-bottom: 1px solid #ccc; }
   .mobile-shift-title { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px; }
   .mobile-add-btn { background: #28a745; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 20px; line-height: 1; cursor: pointer; display: flex; justify-content: center; align-items: center; }
   .mobile-person-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; border-bottom: 1px dashed #f0f0f0; }
+
+  /* MIGLIORAMENTI MODALE E GESTIONE PERSONALE SU MOBILE */
+  .modal { padding: 10px; box-sizing: border-box; }
+  .modal-content { 
+      width: 100% !important; 
+      padding: 15px !important; 
+      max-height: 85vh !important;
+      overflow-y: auto !important;
+  }
+  #staff-list-container ul { 
+      grid-template-columns: 1fr !important; 
+      column-gap: 0;
+  }
+  #staff-form { 
+      flex-direction: column; 
+      align-items: stretch; 
+  }
+  #staff-form input, #staff-form select { 
+      width: 100% !important; 
+      box-sizing: border-box;
+      margin-bottom: 5px;
+  }
 }
 
 /* STAMPA E PDF */
