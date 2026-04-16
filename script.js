@@ -2,10 +2,14 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     MobileDragDrop.polyfill({
-      dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
-  });
-  
-  
+        dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+    });
+
+    window.addEventListener('touchmove', function(e) {
+        if (e.target.closest('.placed')) {
+            e.preventDefault();
+        }
+    }, { passive: false });
   
   const SUPABASE_URL = 'https://fwmixkwojjdgljcynycu.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bWl4a3dvampkZ2xqY3lueWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjU1MzYsImV4cCI6MjA3NzMwMTUzNn0.Nun5QolQqtGZX61RbC8gFqL6ojA9KmoiZI7T6JtSmss';
@@ -250,33 +254,16 @@ document.addEventListener('DOMContentLoaded', () => {
         el.classList.add('in-dubbio');
     }
 
-    el.addEventListener('click', (e) => {
-        if (!isLoggedIn) return; 
-        e.stopPropagation(); 
-        const giaInDubbio = el.classList.contains('in-dubbio');
-        
-        if (giaInDubbio) {
-            el.classList.remove('in-dubbio');
-            showToast(`Turno confermato per ${person.name}`);
-        } else {
-            el.classList.add('in-dubbio');
-            showToast(`${person.name} messo in dubbio (?)`);
-        }
-        saveState();
-    });
-    
-    let clickTimer = null; // Il nostro "giudice" del tempo
+    let clickTimer = null; 
 
     el.addEventListener('click', (e) => {
         if (!isLoggedIn) return; 
         e.stopPropagation(); 
         
         if (clickTimer) {
-            // Se c'è già un timer attivo, significa che hai fatto un SECONDO tocco veloce!
             clearTimeout(clickTimer);
             clickTimer = null;
             
-            // LOGICA DI ELIMINAZIONE (Ex doppio-clic)
             if (confirm(`Rimuovere "${person.name}"?`)) {
                 const parent = el.parentElement;
                 el.remove();
@@ -287,9 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         } else {
-            // È il PRIMO tocco. Facciamo partire un timer di 250 millisecondi.
             clickTimer = setTimeout(() => {
-                // Se in 250ms non arrivano altri tocchi, allora è un tocco singolo.
                 const giaInDubbio = el.classList.contains('in-dubbio');
                 if (giaInDubbio) {
                     el.classList.remove('in-dubbio');
@@ -299,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(`${person.name} messo in dubbio (?)`);
                 }
                 saveState();
-                clickTimer = null; // Resettiamo il giudice
+                clickTimer = null; 
             }, 250); 
         }
     });
@@ -478,11 +463,6 @@ document.addEventListener('DOMContentLoaded', () => {
   elements.printBtn.addEventListener('click', () => window.print());
 
   elements.exportPdfBtn.addEventListener('click', async () => {
-      if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
-          showToast("La condivisione PDF è disponibile solo sull'App per iPad.");
-          return;
-      }
-
       const element = document.getElementById('main');
       const originalTitle = document.title;
       
@@ -504,22 +484,25 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       try {
-          const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
-          const base64Data = pdfDataUri.split(',')[1];
+          if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+              const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
+              const base64Data = pdfDataUri.split(',')[1];
 
-          const savedFile = await window.Capacitor.Plugins.Filesystem.writeFile({
-              path: finalFilename,
-              data: base64Data,
-              directory: 'CACHE' 
-          });
+              const savedFile = await window.Capacitor.Plugins.Filesystem.writeFile({
+                  path: finalFilename,
+                  data: base64Data,
+                  directory: 'CACHE' 
+              });
 
-          await window.Capacitor.Plugins.Share.share({
-              title: 'Esporta Turni',
-              text: 'Ecco il PDF dei turni',
-              url: savedFile.uri,
-              dialogTitle: 'Condividi il PDF'
-          });
-
+              await window.Capacitor.Plugins.Share.share({
+                  title: 'Esporta Turni',
+                  text: 'Ecco il PDF dei turni',
+                  url: savedFile.uri,
+                  dialogTitle: 'Condividi il PDF'
+              });
+          } else {
+              await html2pdf().from(element).set(opt).save();
+          }
       } catch (error) {
           console.error("Errore esportazione:", error);
           showToast("Errore durante la creazione del PDF");
@@ -868,5 +851,23 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
+  // =========================================
+  // LOGICA MENU HAMBURGER (TELEFONO)
+  // =========================================
+  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+  const sidebar = document.getElementById('sidebar');
+  const mobileCloseBtn = document.getElementById('mobile-close-sidebar');
+
+  if (mobileMenuBtn && sidebar) {
+      mobileMenuBtn.addEventListener('click', () => {
+          sidebar.classList.add('mobile-open');
+      });
+  }
+
+  if (mobileCloseBtn && sidebar) {
+      mobileCloseBtn.addEventListener('click', () => {
+          sidebar.classList.remove('mobile-open');
+      });
+  }
   init();
 });

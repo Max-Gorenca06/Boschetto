@@ -24,6 +24,9 @@
   <div id="loading-spinner" class="loader" style="display: none;"></div>
 
   <div id="sidebar">
+    <button id="mobile-close-sidebar" style="display: none; float: right; background: none; border: none; font-size: 28px; cursor: pointer; color: #333; margin-bottom: 10px;">&times;</button>
+    <div style="clear: both;"></div>
+    
     <div id="auth-container" style="margin-bottom: 15px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #f9f9f9;">
         <div id="login-form">
             <input type="email" id="login-email" placeholder="Email (Admin)" style="width: 100%; box-sizing: border-box; margin-bottom: 5px; padding: 5px;">
@@ -34,6 +37,12 @@
             <p style="font-size: 13px; margin: 0 0 8px 0; color: #28a745;"><strong>🔓 Accesso Admin attivo</strong></p>
             <button id="btn-logout" style="width: 100%; cursor: pointer; padding: 5px; background: #dc3545; color: white; border: none; border-radius: 3px;">Disconnetti e Blocca</button>
         </div>
+    </div>
+
+    <div class="date-picker-container" style="margin-bottom: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #f9f9f9; text-align: center;">
+        <label for="start-date-picker" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px;">Seleziona il Lunedì:</label>
+        <input type="date" id="start-date-picker" style="width: 100%; padding: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+        <div id="save-status" style="margin-top: 5px; font-size: 11px; color: #666;"></div>
     </div>
 
     <h3>Personale</h3>
@@ -48,14 +57,8 @@
   </div>
 
   <div id="main">
-    <div class="header-container">
+    <div class="header-container" style="justify-content: center; margin-bottom: 10px;">
       <input type="text" id="table-header-title" class="editable-title" value="TURNI DAL LUNEDÌ ALLA DOMENICA">
-      
-      <div class="date-picker-container" style="margin-top: 10px; text-align: center;">
-        <label for="start-date-picker">Seleziona il Lunedì:</label>
-        <input type="date" id="start-date-picker">
-        <span id="save-status" style="margin-left: 15px; font-size: 12px; color: #666;"></span>
-      </div>
     </div>
 
     <table>
@@ -76,6 +79,7 @@
 
     <div id="mobile-view">
       <div class="mobile-day-selector">
+        <button id="mobile-menu-btn" class="btn secondary" style="padding: 5px 12px; font-size: 18px;">&#9776;</button>
         <button id="mobile-prev-day" class="btn secondary">&lt;</button>
         <h2 id="mobile-current-day">Oggi - Lunedì 13</h2>
         <button id="mobile-next-day" class="btn secondary">&gt;</button>
