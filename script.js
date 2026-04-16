@@ -806,7 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           card.appendChild(titleDiv);
 
-          const people = desktopCell.querySelectorAll('.placed');
+        const people = desktopCell.querySelectorAll('.placed');
           people.forEach(pEl => {
               const personName = pEl.dataset.name;
               const inDubbio = pEl.classList.contains('in-dubbio');
@@ -818,8 +818,29 @@ document.addEventListener('DOMContentLoaded', () => {
               nameSpan.textContent = personName + (inDubbio ? " ?" : "");
               if (inDubbio) nameSpan.style.fontWeight = 'bold';
 
+              // 1. LOGICA DEL DUBBIO (TAP SUL NOME)
+              if (isLoggedIn) {
+                  nameSpan.style.cursor = 'pointer';
+                  nameSpan.style.padding = '5px 10px';
+                  nameSpan.style.marginLeft = '-10px';
+                  nameSpan.style.borderRadius = '5px';
+                  nameSpan.style.backgroundColor = inDubbio ? '#fff3cd' : 'transparent';
+
+                  nameSpan.onclick = async () => {
+                      if (inDubbio) {
+                          pEl.classList.remove('in-dubbio'); 
+                          showToast(`Turno confermato per ${personName}`);
+                      } else {
+                          pEl.classList.add('in-dubbio'); 
+                          showToast(`${personName} messo in dubbio (?)`);
+                      }
+                      await saveState(); 
+                      renderMobileView(); 
+                  };
+              }
               row.appendChild(nameSpan);
 
+              // 2. LOGICA DEL TASTO ELIMINA (CHE ERA STATA CANCELLATA)
               if (isLoggedIn) {
                   const delBtn = document.createElement('button');
                   delBtn.textContent = '❌';
