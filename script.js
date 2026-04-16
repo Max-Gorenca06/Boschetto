@@ -121,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadState() {
-    // IL BIVIO LOGICO: Il capo vede la Bozza (1), gli altri vedono la Vetrina (2)
     const databaseId = isLoggedIn ? 1 : 2;
 
     const { data } = await supabaseClient.from('turni_salvati').select('dati_griglia, updated_at').eq('id', databaseId).single();
@@ -199,7 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     localStorage.setItem('turni_backup', JSON.stringify(backupData));
 
-    // Il salvataggio automatico avviene sempre e solo sulla Bozza (ID: 1)
     const { error } = await supabaseClient.from('turni_salvati').update({ dati_griglia: data, updated_at: new Date() }).eq('id', 1);
     
     if (error) {
