@@ -962,6 +962,29 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       }
   });
+//=========================================
+// LOGICA OFFLINE-ONLINE
+//========================================= 
+
+  // Sensore 1: Quando la rete sparisce
+  window.addEventListener('offline', () => {
+      showToast("Sei offline. Le modifiche verranno salvate solo su questo dispositivo ⚠️");
+      // Opzionale: potresti colorare l'icona di salvataggio di rosso
+  });
+
+  // Sensore 2: Quando la rete torna
+  window.addEventListener('online', async () => {
+      // Controlliamo se c'è un admin loggato, altrimenti non serve salvare
+      if (!isLoggedIn) return; 
+
+      showToast("Wi-Fi tornato! Sincronizzazione in corso... ⏳");
+      
+      // Essendo tornata la rete, forziamo il salvataggio. 
+      // saveState() leggerà la griglia attuale e la manderà finalmente a Supabase.
+      await saveState();
+      
+      showToast("Sincronizzazione completata ✅");
+  });
 
   init();
 });
