@@ -382,6 +382,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const turno = parts[1];  
     const fasciaSelezionata = fasceOrarie[turno]; 
 
+    // --- CONTROLLO RICHIESTE / ASSENZE CON OVERRIDE ---
+    if (window.assenzeSettimana && window.assenzeSettimana[name]) {
+        if (window.assenzeSettimana[name].includes(`${giorno}-tutto_il_giorno`) || 
+            window.assenzeSettimana[name].includes(`${giorno}-${turno}`)) {
+            
+            const conferma = confirm(`⚠️ RICHIESTA/ASSENZA REGISTRATA:\n\n${name} ha un blocco impostato per questo giorno/turno.\n\nVuoi forzare l'inserimento nel turno lo stesso?`);
+            if (!conferma) return; // Si ferma fisicamente SOLO se la Lu clicca "Annulla"
+        }
+    }
+    // --------------------------------------------------
+
     let conflittoTrovato = false;
     let nomeTurnoConflitto = "";
 
@@ -583,10 +594,10 @@ document.addEventListener('DOMContentLoaded', () => {
   
   elements.staffForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-    if (isOffline) {
+      if (isOffline) {
           alert("Sei offline! Impossibile salvare modifiche al personale.");
           return;
-    }
+      }
       const id = document.getElementById('original-name').value; 
       const name = document.getElementById('staff-name').value.trim();
       const group = document.getElementById('staff-group').value;
@@ -840,7 +851,7 @@ document.addEventListener('DOMContentLoaded', () => {
               }
               row.appendChild(nameSpan);
 
-              // 2. LOGICA DEL TASTO ELIMINA (CHE ERA STATA CANCELLATA)
+              // 2. LOGICA DEL TASTO ELIMINA
               if (isLoggedIn) {
                   const delBtn = document.createElement('button');
                   delBtn.textContent = '❌';
@@ -983,29 +994,123 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       }
   });
-//=========================================
-// LOGICA OFFLINE-ONLINE
-//========================================= 
+
+  //=========================================
+  // LOGICA OFFLINE-ONLINE
+  //========================================= 
 
   // Sensore 1: Quando la rete sparisce
   window.addEventListener('offline', () => {
       showToast("Sei offline. Le modifiche verranno salvate solo su questo dispositivo ⚠️");
-      // Opzionale: potresti colorare l'icona di salvataggio di rosso
   });
 
   // Sensore 2: Quando la rete torna
   window.addEventListener('online', async () => {
-      // Controlliamo se c'è un admin loggato, altrimenti non serve salvare
       if (!isLoggedIn) return; 
 
       showToast("Wi-Fi tornato! Sincronizzazione in corso... ⏳");
-      
-      // Essendo tornata la rete, forziamo il salvataggio. 
-      // saveState() leggerà la griglia attuale e la manderà finalmente a Supabase.
       await saveState();
-      
       showToast("Sincronizzazione completata ✅");
   });
+
+  // =========================================
+  // LOGICA ASSENZE (MENU A TENDINA) E SALVATAGGIO
+  // =========================================
+  window.assenzeSettimana = {}; // Memoria delle assenze
+
+  // Intercettiamo i salvataggi originali
+  const originalSaveState = saveState;
+  saveState = async function() {
+      // Quando salviamo la griglia, iniettiamo dentro anche le assenze
+      const currentData = await supabaseClient.from('turni_salvati').select('dati_griglia').eq('id', 1).single();
+      if (currentData.data && currentData.data.dati_griglia) {
+          currentData.data.dati_griglia["_metadata_assenze"] = window.assenzeSettimana;
+          await supabaseClient.from('turni_salvati').update({ dati_griglia: currentData.data.dati_griglia }).eq('id', 1);
+      }
+      return originalSaveState.apply(this, arguments);
+  };
+
+  const originalLoadState = loadState;
+  loadState = async function() {
+      await originalLoadState.apply(this, arguments);
+      // Quando carichiamo la griglia, peschiamo le assenze
+      const dbId = isLoggedIn ? 1 : 2;
+      const { data } = await supabaseClient.from('turni_salvati').select('dati_griglia').eq('id', dbId).single();
+      if (data && data.dati_griglia && data.dati_griglia["_metadata_assenze"]) {
+          window.assenzeSettimana = data.dati_griglia["_metadata_assenze"];
+      } else {
+          window.assenzeSettimana = {};
+      }
+  };
+
+  // Funzionamento Finestra
+  const absencesModal = document.getElementById('absences-modal');
+  document.getElementById('open-absences-btn')?.addEventListener('click', () => {
+      elements.staffModal.classList.remove('show'); // Chiude gestisci personale
+      popolaTendinaAssenze();
+      aggiornaListaAssenze();
+      absencesModal.classList.add('show');
+  });
+
+  document.getElementById('close-absences-modal')?.addEventListener('click', () => {
+      absencesModal.classList.remove('show');
+  });
+
+  function popolaTendinaAssenze() {
+      const selectName = document.getElementById('abs-name');
+      const selectDay = document.getElementById('abs-day');
+      
+      if(!selectName || !selectDay) return;
+
+      selectName.innerHTML = '<option value="" disabled selected>Persona...</option>';
+      staff.forEach(p => selectName.innerHTML += `<option value="${p.name}">${p.name}</option>`);
+
+      selectDay.innerHTML = '<option value="" disabled selected>Giorno...</option>';
+      giorni.forEach(g => selectDay.innerHTML += `<option value="${g.toLowerCase()}">${g}</option>`);
+  }
+
+  document.getElementById('add-abs-btn')?.addEventListener('click', () => {
+      const nome = document.getElementById('abs-name').value;
+      const giorno = document.getElementById('abs-day').value;
+      const turno = document.getElementById('abs-shift').value;
+
+      if (!nome || !giorno || !turno) return alert("Compila tutti i menu a tendina.");
+      if (!window.assenzeSettimana[nome]) window.assenzeSettimana[nome] = [];
+      
+      const blocco = `${giorno}-${turno}`;
+      if (!window.assenzeSettimana[nome].includes(blocco)) {
+          window.assenzeSettimana[nome].push(blocco);
+          saveState(); // Salva nel database
+          aggiornaListaAssenze();
+          showToast(`Nota impostata per ${nome}`);
+      }
+  });
+
+  function aggiornaListaAssenze() {
+      const ul = document.getElementById('absences-list');
+      if(!ul) return;
+      ul.innerHTML = '';
+      Object.keys(window.assenzeSettimana).forEach(nome => {
+          window.assenzeSettimana[nome].forEach(blocco => {
+              const [giorno, turno] = blocco.split('-');
+              const li = document.createElement('li');
+              li.style.cssText = "display: flex; justify-content: space-between; padding: 6px; border-bottom: 1px solid #eee;";
+              li.innerHTML = `<span><b>${nome}</b>: ${giorno.toUpperCase()} (${turno.replace(/_/g, ' ').toUpperCase()})</span>`;
+              
+              const delBtn = document.createElement('button');
+              delBtn.textContent = '❌';
+              delBtn.style.cssText = "background:none; border:none; color:red; cursor:pointer;";
+              delBtn.onclick = () => {
+                  window.assenzeSettimana[nome] = window.assenzeSettimana[nome].filter(b => b !== blocco);
+                  if(window.assenzeSettimana[nome].length === 0) delete window.assenzeSettimana[nome];
+                  saveState();
+                  aggiornaListaAssenze();
+              };
+              li.appendChild(delBtn);
+              ul.appendChild(li);
+          });
+      });
+  }
 
   init();
 });

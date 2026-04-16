@@ -110,7 +110,33 @@
       </form>
       <div style="display: flex; gap: 10px; margin-top: 15px;">
         <button class="btn" id="add-new-staff-btn" style="flex-grow: 1;">Aggiungi Persona</button>
+        <button class="btn" id="open-absences-btn" style="background: #e91e63; flex-grow: 1;">Richieste / Assenze</button>
       </div>
+    </div>
+  </div>
+
+  <div id="absences-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <span class="close-button" id="close-absences-modal">&times;</span>
+      <h2 style="color: #e91e63;">Richieste e Assenze</h2>
+      <p style="font-size: 13px; color: #666;">Imposta le assenze o richieste. Verrai avvisato se provi a inserire la persona in un turno bloccato.</p>
+      
+      <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
+        <select id="abs-name" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;"></select>
+        <select id="abs-day" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;"></select>
+        <select id="abs-shift" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;">
+           <option value="tutto_il_giorno">Tutto il giorno</option>
+           <option value="camere">Camere</option>
+           <option value="cucina_pranzo">Cucina Pranzo</option>
+           <option value="sala_pranzo">Sala Pranzo</option>
+           <option value="cucina_cena">Cucina Cena</option>
+           <option value="sala_cena">Sala Cena</option>
+        </select>
+        <button id="add-abs-btn" class="btn" style="background: #e91e63;">Salva Nota</button>
+      </div>
+      
+      <h3 style="font-size: 14px; margin-top: 20px;">Richieste per questa settimana:</h3>
+      <ul id="absences-list" style="list-style: none; padding: 0; font-size: 14px;"></ul>
     </div>
   </div>
 
