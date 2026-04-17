@@ -2,27 +2,33 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <!-- NUOVO: Istruzioni per il browser per non salvare la cache -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Turni Boschetto</title>
+  
   <link rel="stylesheet" href="style_v2.css">
-  <!-- Aggiungi la libreria Supabase -->
-  <!-- NUOVO: Aggiungi la libreria per "fotografare" la tabella per la stampa/condivisione -->
+  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- NUOVO: Libreria per generare PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
+  <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/scroll-behaviour-sink.min.js"></script>
 </head>
 <body>
-  <!-- NUOVO: Indicatore di caricamento -->
-  <div id="loading-spinner" class="loader"></div>
-```
+  
+  <div id="loading-spinner" class="loader" style="display: none;"></div>
 
   <div id="sidebar">
+    <button id="mobile-close-sidebar" style="display: none; float: right; background: none; border: none; font-size: 28px; cursor: pointer; color: #333; margin-bottom: 10px;">&times;</button>
+    <div style="clear: both;"></div>
+    
     <div id="auth-container" style="margin-bottom: 15px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #f9f9f9;">
         <div id="login-form">
             <input type="email" id="login-email" placeholder="Email (Admin)" style="width: 100%; box-sizing: border-box; margin-bottom: 5px; padding: 5px;">
@@ -34,34 +40,39 @@
             <button id="btn-logout" style="width: 100%; cursor: pointer; padding: 5px; background: #dc3545; color: white; border: none; border-radius: 3px;">Disconnetti e Blocca</button>
         </div>
     </div>
-    <h2>Personale</h2>
-    <div id="sidebar-content">
-      </div>
-    
-    <hr>
-    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #555;">
-          <label for="start-date-picker"><strong>Giorno di partenza (Lunedì):</strong></label>
-          <input type="date" id="start-date-picker" style="padding: 4px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">
-      </div>
-    <div class="controls">
-      <button class="btn secondary" id="resetBtn">Reset Turni</button>
-      <button id="printBtn" class="btn secondary">Stampa</button>
-      <button id="export-pdf-btn" class="btn secondary">Esporta PDF</button>
-      <button class="btn" id="manageStaffBtn">Gestisci Personale</button>
+
+    <div class="date-picker-container" style="margin-bottom: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #f9f9f9; text-align: center;">
+        <label for="start-date-picker" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px;">Seleziona il Lunedì:</label>
+        <input type="date" id="start-date-picker" style="width: 100%; padding: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+        <div id="save-status" style="margin-top: 5px; font-size: 11px; color: #666;"></div>
     </div>
 
-    <div id="save-status" style="text-align: center; font-size: 11px; color: #666; margin-top: 15px; height: 15px;"></div>
-
+    <h3>Personale</h3>
+    <div id="sidebar-content"></div>
+    
+    <div class="controls" style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+      <button class="btn" id="publishBtn" style="background: #ff9800; border: none; font-weight: bold; color: white;">🚀 Pubblica Turni Online</button>
+      <button class="btn secondary" id="resetBtn">Svuota Griglia</button>
+      <button class="btn" id="manageStaffBtn">Gestisci Personale</button>
+      <button class="btn" id="printBtn">Stampa</button>
+      <button class="btn" id="export-pdf-btn">Esporta in PDF</button>
+      <button class="btn" id="export-ics-btn" style="background: #28a745;">Scarica Calendario (.ics)</button>
+    </div>
   </div>
 
   <div id="main">
-    <div class="header-container">
-      <input type="text" id="table-header-title" placeholder="TURNI DAL ... AL ..." class="editable-title">
+    <div id="historical-banner" style="display: none; background: #fff3cd; color: #856404; padding: 10px; text-align: center; font-size: 14px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #ffeeba;">
+      ⚠️ <b>MODALITÀ ARCHIVIO (Sola Lettura)</b> - Stai guardando una settimana passata.
+      <button id="clone-week-btn" class="btn" style="margin-left: 15px; background: #28a745; padding: 5px 10px; font-size: 13px;">🔄 Clona per oggi</button>
     </div>
+    <div class="header-container" style="justify-content: center; margin-bottom: 5px; margin-top: -10px;">
+      <input type="text" id="table-header-title" class="editable-title" value="TURNI DAL LUNEDÌ ALLA DOMENICA">
+    </div>
+
     <table>
       <thead>
         <tr>
-          <th>Turno / Giorno</th>
+          <th>Turno</th>
           <th>Lunedì</th>
           <th>Martedì</th>
           <th>Mercoledì</th>
@@ -73,16 +84,23 @@
       </thead>
       <tbody id="grid"></tbody>
     </table>
+
+    <div id="mobile-view">
+      <div class="mobile-day-selector">
+        <button id="mobile-menu-btn" class="btn secondary" style="padding: 5px 12px; font-size: 18px;">&#9776;</button>
+        <button id="mobile-prev-day" class="btn secondary">&lt;</button>
+        <h2 id="mobile-current-day">Oggi - Lunedì 13</h2>
+        <button id="mobile-next-day" class="btn secondary">&gt;</button>
+      </div>
+      <div id="mobile-cards-container"></div>
+    </div>
   </div>
 
-  <!-- Modale per la gestione del personale -->
   <div id="staff-modal" class="modal">
     <div class="modal-content">
       <span class="close-button">&times;</span>
       <h2>Gestisci Personale</h2>
-      <div id="staff-list-container">
-        <!-- La lista del personale verrà inserita qui -->
-      </div>
+      <div id="staff-list-container"></div>
       <form id="staff-form" style="display: none;">
         <input type="hidden" id="original-name">
         <input type="text" id="staff-name" placeholder="Nome" required>
@@ -98,12 +116,53 @@
       </form>
       <div style="display: flex; gap: 10px; margin-top: 15px;">
         <button class="btn" id="add-new-staff-btn" style="flex-grow: 1;">Aggiungi Persona</button>
-        <button class="btn secondary" id="export-staff-btn" style="flex-grow: 1;">Esporta Personale</button>
+        <button class="btn" id="open-absences-btn" style="background: #e91e63; flex-grow: 1;">Richieste / Assenze</button>
       </div>
     </div>
   </div>
-  
-  <!-- Collega il file JavaScript esterno -->
+
+  <div id="absences-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <span class="close-button" id="close-absences-modal">&times;</span>
+      <h2 style="color: #e91e63;">Richieste e Assenze</h2>
+      <p style="font-size: 13px; color: #666;">Imposta le assenze o richieste. Verrai avvisato se provi a inserire la persona in un turno bloccato.</p>
+      
+      <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
+        <select id="abs-name" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;"></select>
+        <select id="abs-day" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;"></select>
+        <select id="abs-shift" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;">
+           <option value="tutto_il_giorno">Tutto il giorno</option>
+           <option value="camere">Camere</option>
+           <option value="cucina_pranzo">Cucina Pranzo</option>
+           <option value="sala_pranzo">Sala Pranzo</option>
+           <option value="cucina_cena">Cucina Cena</option>
+           <option value="sala_cena">Sala Cena</option>
+        </select>
+        <button id="add-abs-btn" class="btn" style="background: #e91e63;">Salva Nota</button>
+      </div>
+      
+      <h3 style="font-size: 14px; margin-top: 20px;">Richieste per questa settimana:</h3>
+      <ul id="absences-list" style="list-style: none; padding: 0; font-size: 14px;"></ul>
+    </div>
+  </div>
+
+  <div id="ics-modal" class="modal">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <span class="close-button" id="close-ics-modal">&times;</span>
+      <h2>Esporta i tuoi turni</h2>
+      <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Seleziona il tuo nome per scaricare il calendario (.ics) della settimana selezionata.</p>
+      
+      <select id="select-staff-ics" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ccc;">
+          <option value="" disabled selected>Scegli il tuo nome...</option>
+      </select>
+
+      <div style="display: flex; gap: 10px;">
+        <button id="confirm-export-ics" class="btn" style="flex: 1; background: #28a745;">Scarica .ics</button>
+        <button id="cancel-export-ics" class="btn secondary" style="flex: 1;">Annulla</button>
+      </div>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
