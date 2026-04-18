@@ -269,7 +269,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function createPlacedElement(person) {
     const el = document.createElement('div');
     el.className = 'placed';
-    el.textContent = person.name;
     el.dataset.name = person.name;
     
     el.draggable = isLoggedIn; 
@@ -278,10 +277,12 @@ document.addEventListener('DOMContentLoaded', () => {
         el.classList.add('in-dubbio');
     }
 
-    // LOGICA CONTRATTO FISSO
+    // LOGICA CONTRATTO FISSO (Con Lucchetto)
     const datiStaff = staff.find(s => s.name.toLowerCase() === person.name.toLowerCase());
     if (datiStaff && datiStaff.is_fisso) {
-        el.classList.add('contratto-fisso');
+        el.textContent = person.name + " 🔒";
+    } else {
+        el.textContent = person.name;
     }
 
     let clickTimer = null; 
@@ -346,6 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         b.draggable = isLoggedIn;
         b.dataset.name = p.name;
+        // Non inseriamo l'icona lucchetto nella sidebar come richiesto
         b.innerHTML = `${p.name} <span class="shift-count">[0]</span>`;
         
         b.addEventListener('dragstart', e => {
@@ -659,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.staffForm.style.display = 'none';
       elements.addNewStaffBtn.style.display = 'block';
       
-      // Forza l'aggiornamento della griglia per colorare subito i fissi
+      // Forza l'aggiornamento della griglia
       document.querySelectorAll('.cell').forEach(c => { c.innerHTML = ''; });
       await loadState();
 
@@ -927,7 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           card.appendChild(titleDiv);
 
-        const people = desktopCell.querySelectorAll('.placed');
+          const people = desktopCell.querySelectorAll('.placed');
           people.forEach(pEl => {
               const personName = pEl.dataset.name;
               const inDubbio = pEl.classList.contains('in-dubbio');
@@ -936,25 +938,18 @@ document.addEventListener('DOMContentLoaded', () => {
               row.className = 'mobile-person-row';
 
               const nameSpan = document.createElement('span');
-              nameSpan.textContent = personName + (inDubbio ? " ?" : "");
-              if (inDubbio) nameSpan.style.fontWeight = 'bold';
-              
               const datiStaff = staff.find(s => s.name.toLowerCase() === personName.toLowerCase());
-              if (datiStaff && datiStaff.is_fisso) {
-                  nameSpan.style.backgroundColor = inDubbio ? '#fff3cd' : '#e0e0e0';
-                  nameSpan.style.color = '#555';
-                  nameSpan.style.borderRadius = '3px';
-                  nameSpan.style.padding = '2px 5px';
-              }
+              const isFissoStr = (datiStaff && datiStaff.is_fisso) ? " 🔒" : "";
+              
+              nameSpan.textContent = personName + isFissoStr + (inDubbio ? " ?" : "");
+              if (inDubbio) nameSpan.style.fontWeight = 'bold';
 
               if (isLoggedIn) {
                   nameSpan.style.cursor = 'pointer';
                   nameSpan.style.padding = '5px 10px';
                   nameSpan.style.marginLeft = '-10px';
                   nameSpan.style.borderRadius = '5px';
-                  if (!datiStaff || !datiStaff.is_fisso) {
-                      nameSpan.style.backgroundColor = inDubbio ? '#fff3cd' : 'transparent';
-                  }
+                  nameSpan.style.backgroundColor = inDubbio ? '#fff3cd' : 'transparent';
 
                   nameSpan.onclick = async () => {
                       if (inDubbio) {
