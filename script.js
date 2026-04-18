@@ -347,7 +347,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         b.draggable = isLoggedIn;
         b.dataset.name = p.name;
-        // Non inseriamo l'icona lucchetto nella sidebar come richiesto
         b.innerHTML = `${p.name} <span class="shift-count">[0]</span>`;
         
         b.addEventListener('dragstart', e => {
@@ -502,59 +501,68 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  elements.printBtn.addEventListener('click', () => window.print());
+  // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
+  async function gestisciEsportazione(azione) {
+    const element = document.getElementById('main');
+    const originalTitle = document.title;
+    
+    let customName = elements.tableHeaderTitle.value.trim() || "Turni";
+    customName = customName.replace(/\//g, '-');
+    const finalFilename = `${customName}.pdf`;
+    
+    showToast(azione === 'stampa' ? "Preparazione stampa..." : "Generazione PDF...");
+    
+    document.body.classList.add('print-mode');
+    window.scrollTo(0, 0);
 
-  elements.exportPdfBtn.addEventListener('click', async () => {
-      const element = document.getElementById('main');
-      const originalTitle = document.title;
-      
-      let customName = elements.tableHeaderTitle.value.trim() || "Turni";
-      customName = customName.replace(/\//g, '-');
-      const finalFilename = `${customName}.pdf`;
-      
-      showToast("Generazione PDF in corso...");
-      
-      document.body.classList.add('print-mode');
-      window.scrollTo(0, 0);
+    const opt = {
+        margin: [2, 2, 2, 2],
+        filename: finalFilename,
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
 
-      const opt = {
-          margin: [2, 2, 2, 2],
-          filename: finalFilename,
-          image: { type: 'jpeg', quality: 1 },
-          html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-      };
+    try {
+        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+            // Se siamo su iPad (App Xcode), creiamo il PDF e usiamo il menu "Condividi"
+            // Da lì la Lu potrà cliccare su "Stampa"
+            const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
+            const base64Data = pdfDataUri.split(',')[1];
 
-      try {
-          if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-              const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
-              const base64Data = pdfDataUri.split(',')[1];
+            const savedFile = await window.Capacitor.Plugins.Filesystem.writeFile({
+                path: finalFilename,
+                data: base64Data,
+                directory: 'CACHE' 
+            });
 
-              const savedFile = await window.Capacitor.Plugins.Filesystem.writeFile({
-                  path: finalFilename,
-                  data: base64Data,
-                  directory: 'CACHE' 
-              });
+            await window.Capacitor.Plugins.Share.share({
+                title: azione === 'stampa' ? 'Stampa Turni' : 'Esporta PDF',
+                url: savedFile.uri
+            });
+        } else {
+            // Se siamo su PC o Safari
+            if (azione === 'stampa') {
+                window.print(); 
+            } else {
+                await html2pdf().from(element).set(opt).save();
+            }
+        }
+    } catch (error) {
+        console.error("Errore:", error);
+        showToast("Errore durante l'operazione");
+    } finally {
+        document.body.classList.remove('print-mode');
+        document.title = originalTitle;
+    }
+  }
 
-              await window.Capacitor.Plugins.Share.share({
-                  title: 'Esporta Turni',
-                  text: 'Ecco il PDF dei turni',
-                  url: savedFile.uri,
-                  dialogTitle: 'Condividi il PDF'
-              });
-          } else {
-              await html2pdf().from(element).set(opt).save();
-          }
-      } catch (error) {
-          console.error("Errore esportazione:", error);
-          showToast("Errore durante la creazione del PDF");
-      } finally {
-          document.body.classList.remove('print-mode');
-          document.title = originalTitle;
-      }
-  });
+  // Colleghiamo i bottoni alla nuova funzione unificata
+  elements.printBtn.addEventListener('click', () => gestisciEsportazione('stampa'));
+  elements.exportPdfBtn.addEventListener('click', () => gestisciEsportazione('pdf'));
 
-    elements.manageStaffBtn.addEventListener('click', () => {
+
+  elements.manageStaffBtn.addEventListener('click', () => {
       populateStaffModal();
       elements.staffModal.classList.add('show');
       
@@ -562,6 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const sidebar = document.getElementById('sidebar');
       if (sidebar) sidebar.classList.remove('mobile-open');
   });
+  
   elements.closeModalBtn.addEventListener('click', () => elements.staffModal.classList.remove('show'));
   
   function populateStaffModal() {

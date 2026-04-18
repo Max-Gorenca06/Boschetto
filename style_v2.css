@@ -202,38 +202,37 @@ tr { border-bottom: 1px solid #ccc; }
   @page { size: A4 landscape; margin: 0; }
   body { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; position: static !important; height: auto !important; }
   #sidebar, #staff-modal, #ics-modal, .loader, .controls, #save-status, .date-picker-container { display: none !important; }
-  #main { display: block !important; width: 1120px !important; height: 760px !important; padding: 10px !important; margin: 0 !important; overflow: hidden !important; }
+  
+  /* Ridotto a 700px per stare in una sola pagina A4 */
+  #main { display: block !important; width: 1100px !important; height: 700px !important; padding: 10px !important; margin: 0 !important; overflow: hidden !important; }
+  
   .header-container { margin: 0 !important; height: 40px !important; flex-direction: row !important; justify-content: center !important; display: flex !important; }
   .editable-title { border-bottom: none !important; font-size: 18px !important; padding: 5px !important; margin: 0 !important; }
-  table { display: table !important; width: 100% !important; height: 690px !important; min-width: 100% !important; margin: 0 0 10px 0 !important; table-layout: fixed !important; border-collapse: collapse !important; border-bottom: 2px solid #000 !important; }  
-  th, td { border: 1px solid #000 !important; }
-  th:nth-child(1), td:nth-child(1) { width: 10% !important; }
-  th:nth-child(n+2), td:nth-child(n+2) { width: 15% !important; }
-  th { height: 25px !important; padding: 2px !important; }
-  #grid tr { height: 132px !important; }
-  .cell { min-height: 0 !important; height: 100% !important; border: none !important; display: flex !important; flex-wrap: wrap !important; align-content: flex-start !important; padding: 2px !important; overflow: hidden !important; }
-  .cell-counter { display: none !important; }
-  .placed { width: 50% !important; font-size: 8.5pt !important; border: none !important; padding: 0 1px !important; margin-bottom: 0 !important; white-space: nowrap !important; line-height: 1.2 !important; }
   
-  .placed.contratto-fisso { background-color: #e0e0e0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table { display: table !important; width: 100% !important; height: 640px !important; min-width: 100% !important; margin: 0 0 10px 0 !important; table-layout: fixed !important; border-collapse: collapse !important; border-bottom: 2px solid #000 !important; }  
+  th, td { border: 1px solid #000 !important; }
+  th { height: 25px !important; padding: 2px !important; font-size: 11px !important; }
+  #grid tr { height: 118px !important; }
+  
+  .cell { min-height: 0 !important; height: 100% !important; border: none !important; display: flex !important; flex-wrap: wrap !important; align-content: flex-start !important; padding: 2px !important; overflow: hidden !important; gap: 1px !important; }
+  .cell-counter { display: none !important; }
+  
+  /* Restringiamo al 49% e usiamo il font a 8.5 come richiesto */
+  .placed { width: 49% !important; font-size: 8.5pt !important; letter-spacing: -0.2px !important; border: none !important; padding: 0 !important; margin-bottom: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important; line-height: 1.2 !important; }
 }
 
-body.print-mode { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; position: static !important; height: auto !important; }
+/* Applichiamo le stesse regole anche per la modalità print-mode di html2pdf */
 body.print-mode #sidebar, body.print-mode #staff-modal, body.print-mode #ics-modal, body.print-mode .loader, body.print-mode .controls, body.print-mode #save-status, body.print-mode .date-picker-container { display: none !important; }
-body.print-mode #main { display: block !important; width: 1120px !important; height: 760px !important; padding: 10px !important; margin: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
+body.print-mode #main { display: block !important; width: 1100px !important; height: 700px !important; padding: 10px !important; margin: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
 body.print-mode .header-container { margin: 0 !important; height: 40px !important; flex-direction: row !important; justify-content: center !important; display: flex !important; }
 body.print-mode .editable-title { border-bottom: none !important; font-size: 18px !important; padding: 5px !important; margin: 0 !important; }
-body.print-mode table { display: table !important; width: 100% !important; height: 690px !important; min-width: 100% !important; margin: 0 0 10px 0 !important; table-layout: fixed !important; border-collapse: collapse !important; border-bottom: 2px solid #000 !important; }
+body.print-mode table { display: table !important; width: 100% !important; height: 640px !important; min-width: 100% !important; margin: 0 0 10px 0 !important; table-layout: fixed !important; border-collapse: collapse !important; border-bottom: 2px solid #000 !important; }
 body.print-mode th, body.print-mode td { border: 1px solid #000 !important; }
-body.print-mode th:nth-child(1), body.print-mode td:nth-child(1) { width: 10% !important; }
-body.print-mode th:nth-child(n+2), body.print-mode td:nth-child(n+2) { width: 15% !important; }
-body.print-mode th { height: 25px !important; padding: 2px !important; }
-body.print-mode #grid tr { height: 132px !important; }
-body.print-mode .cell { min-height: 0 !important; height: 100% !important; border: none !important; display: flex !important; flex-wrap: wrap !important; align-content: flex-start !important; padding: 2px !important; overflow: hidden !important; }
+body.print-mode th { height: 25px !important; padding: 2px !important; font-size: 11px !important;}
+body.print-mode #grid tr { height: 118px !important; }
+body.print-mode .cell { min-height: 0 !important; height: 100% !important; border: none !important; display: flex !important; flex-wrap: wrap !important; align-content: flex-start !important; padding: 2px !important; overflow: hidden !important; gap: 1px !important; }
 body.print-mode .cell-counter { display: none !important; }
-body.print-mode .placed { width: 50% !important; font-size: 8.5pt !important; border: none !important; padding: 0 1px !important; margin-bottom: 0 !important; white-space: nowrap !important; line-height: 1.2 !important; }
-
-body.print-mode .placed.contratto-fisso { background-color: #e0e0e0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body.print-mode .placed { width: 49% !important; font-size: 8.5pt !important; letter-spacing: -0.2px !important; border: none !important; padding: 0 !important; margin-bottom: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important; line-height: 1.2 !important; }
 
 .toast { visibility: hidden; min-width: 200px; background-color: #323232; color: #fff; text-align: center; border-radius: 8px; padding: 12px 20px; position: fixed; z-index: 9999; left: 50%; bottom: 20px; transform: translateX(-50%); font-size: 14px; font-weight: 500; box-shadow: 0px 4px 10px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; pointer-events: none; }
 .toast.show { visibility: visible; opacity: 1; bottom: 40px; }
