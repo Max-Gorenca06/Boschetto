@@ -70,12 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
           loginForm.style.display = isLoggedIn ? 'none' : 'block';
           logoutForm.style.display = isLoggedIn ? 'block' : 'none';
       }
-      // 1. Prendi il titolo "Personale" (il primo h3 della sidebar)
+      
       const staffTitle = document.querySelector('#sidebar h3');
-      // 2. Prendi il contenitore dei nomi
       const sidebarContent = document.getElementById('sidebar-content');
 
-      // Se non siamo loggati, li nascondiamo
       if (staffTitle) staffTitle.style.display = isLoggedIn ? 'block' : 'none';
       if (sidebarContent) sidebarContent.style.display = isLoggedIn ? 'block' : 'none';
       const btnReset = document.getElementById('resetBtn'); 
@@ -278,6 +276,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (person.inDubbio) {
         el.classList.add('in-dubbio');
+    }
+
+    // LOGICA CONTRATTO FISSO
+    const datiStaff = staff.find(s => s.name.toLowerCase() === person.name.toLowerCase());
+    if (datiStaff && datiStaff.is_fisso) {
+        el.classList.add('contratto-fisso');
     }
 
     let clickTimer = null; 
@@ -552,7 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
       populateStaffModal();
       elements.staffModal.classList.add('show');
       
-      // NUOVO: Chiude la barra laterale sul telefono automaticamente
+      // Chiude la barra laterale sul telefono automaticamente
       const sidebar = document.getElementById('sidebar');
       if (sidebar) sidebar.classList.remove('mobile-open');
   });
@@ -562,9 +566,10 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.staffList.innerHTML = '';
     const ul = document.createElement('ul');
     staff.forEach(p => {
+        const isFissoStr = p.is_fisso ? '<span style="background: #e0e0e0; color: #555; padding: 2px 5px; border-radius: 3px; font-size: 10px;">Fisso</span>' : '';
         const li = document.createElement('li');
         li.innerHTML = `
-            <span>${p.name} <small>(${p.group})</small></span> 
+            <span style="display: flex; align-items: center; gap: 5px;">${p.name} <small>(${p.group})</small> ${isFissoStr}</span> 
             <div>
                 <button class="btn secondary btn-edit" style="padding: 2px 8px; font-size: 11px;">Modifica</button>
                 <button class="btn secondary btn-del" style="padding: 2px 8px; font-size: 11px; color:red; border-color:red;">X</button>
@@ -578,6 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('staff-group').value = p.group;
             document.getElementById('staff-max-shifts').value = p.maxShifts;
             document.getElementById('original-name').value = p.id; 
+            document.getElementById('staff-fisso').checked = p.is_fisso || false;
         });
 
         li.querySelector('.btn-del').addEventListener('click', async () => {
@@ -626,12 +632,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const name = document.getElementById('staff-name').value.trim();
       const group = document.getElementById('staff-group').value;
       const maxShifts = document.getElementById('staff-max-shifts').value;
+      const is_fisso = document.getElementById('staff-fisso').checked;
 
       if (!name || !group) return alert("Dati mancanti");
 
       if (id) {
           const oldPerson = staff.find(p => p.id == id);
-          const { error } = await supabaseClient.from('staff').update({ name, group, maxShifts }).eq('id', id);
+          const { error } = await supabaseClient.from('staff').update({ name, group, maxShifts, is_fisso }).eq('id', id);
 
           if (!error && oldPerson && oldPerson.name !== name) {
               document.querySelectorAll(`.placed[data-name="${oldPerson.name}"]`).forEach(el => {
@@ -641,7 +648,7 @@ document.addEventListener('DOMContentLoaded', () => {
               await saveState(); 
           }
       } else {
-          await supabaseClient.from('staff').insert([{ name, group, maxShifts }]);
+          await supabaseClient.from('staff').insert([{ name, group, maxShifts, is_fisso }]);
       }
 
       await loadStaff(); 
@@ -652,6 +659,10 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.staffForm.style.display = 'none';
       elements.addNewStaffBtn.style.display = 'block';
       
+      // Forza l'aggiornamento della griglia per colorare subito i fissi
+      document.querySelectorAll('.cell').forEach(c => { c.innerHTML = ''; });
+      await loadState();
+
       if (typeof renderMobileView === 'function') renderMobileView();
   });
 
@@ -722,7 +733,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const dataCercataStr = e.target.value;
 
-      // Calcoliamo il lunedì della settimana corrente reale (Oggi)
       let oggi = new Date();
       let giornoOggi = oggi.getDay();
       let diffOggi = oggi.getDate() - giornoOggi + (giornoOggi === 0 ? -6 : 1);
@@ -737,14 +747,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const isPast = dataSceltaObj < lunediCorrente;
 
-      // 1. È la bozza su cui stavamo lavorando?
       if (dataCercataStr === dataBozzaAttiva) {
           window.isHistoricalMode = false;
           document.getElementById('historical-banner').style.display = 'none';
           await loadState(); 
           showToast("Bozza attiva caricata 📝");
       } else {
-          // 2. Se non è la bozza, puliamo lo schermo e cerchiamo in Archivio (sia per il passato che per il futuro/presente!)
           document.querySelectorAll('.cell').forEach(c => { c.innerHTML = ''; updateCellCounter(c); });
           window.assenzeSettimana = {};
           
@@ -765,14 +773,12 @@ document.addEventListener('DOMContentLoaded', () => {
               showToast("Nuova settimana, pronta per l'inserimento ✏️");
           }
 
-          // 3. È veramente passato? Solo allora alziamo gli scudi (Sola lettura e Banner Giallo)
           if (isPast) {
               window.isHistoricalMode = true;
               document.getElementById('historical-banner').style.display = 'block';
           } else {
               window.isHistoricalMode = false;
               document.getElementById('historical-banner').style.display = 'none';
-              // RIMOZIONE DELLO SCOGLIO: Nessun salvataggio distruttivo in automatico qui.
           }
       }
       
@@ -780,11 +786,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (typeof updateMobileHeader === 'function') updateMobileHeader();
   });
 
-  // LOGICA DEL PULSANTE CLONA (DEFINITIVA E TOTALMENTE SINCRONIZZATA)
   document.getElementById('clone-week-btn')?.addEventListener('click', async () => {
       if(confirm("Vuoi trasportare questa griglia per usarla come base dei nuovi turni?")) {
           
-          window.isHistoricalMode = false; // Sblocca la griglia
+          window.isHistoricalMode = false; 
           document.getElementById('historical-banner').style.display = 'none';
           
           let oggi = new Date();
@@ -799,19 +804,9 @@ document.addEventListener('DOMContentLoaded', () => {
           const offset = lunediTarget.getTimezoneOffset() * 60000;
           const targetStr = new Date(lunediTarget - offset).toISOString().split('T')[0];
           
-          // 1. Aggiorniamo a schermo la Data
           elements.startDatePicker.value = targetStr;
-          
-          // 2. Aggiorniamo a schermo il Titolo
           aggiornaDateInGriglia(lunediTarget, true);
-          
-          // 3. Forziamo il salvataggio totale tramite il Cervello
-          // Essendo a schermo i blocchetti vecchi e i titoli nuovi, saveState impacchetta tutto
-          // e lo invia correttamente SIA al Local Storage che a Supabase.
           await saveState();
-          
-          // 4. Puliamo tutto visivamente e diciamo al programma di rileggere dal database 
-          // per riattivare i blocchi (drag & drop) freschi
           document.querySelectorAll('.cell').forEach(c => { c.innerHTML = ''; updateCellCounter(c); });
           await loadState();
 
@@ -936,20 +931,30 @@ document.addEventListener('DOMContentLoaded', () => {
           people.forEach(pEl => {
               const personName = pEl.dataset.name;
               const inDubbio = pEl.classList.contains('in-dubbio');
-
+              
               const row = document.createElement('div');
               row.className = 'mobile-person-row';
 
               const nameSpan = document.createElement('span');
               nameSpan.textContent = personName + (inDubbio ? " ?" : "");
               if (inDubbio) nameSpan.style.fontWeight = 'bold';
+              
+              const datiStaff = staff.find(s => s.name.toLowerCase() === personName.toLowerCase());
+              if (datiStaff && datiStaff.is_fisso) {
+                  nameSpan.style.backgroundColor = inDubbio ? '#fff3cd' : '#e0e0e0';
+                  nameSpan.style.color = '#555';
+                  nameSpan.style.borderRadius = '3px';
+                  nameSpan.style.padding = '2px 5px';
+              }
 
               if (isLoggedIn) {
                   nameSpan.style.cursor = 'pointer';
                   nameSpan.style.padding = '5px 10px';
                   nameSpan.style.marginLeft = '-10px';
                   nameSpan.style.borderRadius = '5px';
-                  nameSpan.style.backgroundColor = inDubbio ? '#fff3cd' : 'transparent';
+                  if (!datiStaff || !datiStaff.is_fisso) {
+                      nameSpan.style.backgroundColor = inDubbio ? '#fff3cd' : 'transparent';
+                  }
 
                   nameSpan.onclick = async () => {
                       if (inDubbio) {
@@ -1033,7 +1038,6 @@ document.getElementById('export-ics-btn')?.addEventListener('click', () => {
       });
       icsModal.classList.add('show');
       
-      // NUOVO: Chiude la barra laterale sul telefono automaticamente
       const sidebar = document.getElementById('sidebar');
       if (sidebar) sidebar.classList.remove('mobile-open');
   });

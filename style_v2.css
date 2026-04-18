@@ -190,6 +190,13 @@ tr { border-bottom: 1px solid #ccc; }
   }
 }
 
+/* Colore per i contratti fissi */
+.placed.contratto-fisso {
+    background-color: #e0e0e0 !important; /* Grigio chiaro */
+    color: #555 !important;
+    border: 1px solid #bbb !important;
+}
+
 /* STAMPA E PDF */
 @media print {
   @page { size: A4 landscape; margin: 0; }
@@ -207,6 +214,8 @@ tr { border-bottom: 1px solid #ccc; }
   .cell { min-height: 0 !important; height: 100% !important; border: none !important; display: flex !important; flex-wrap: wrap !important; align-content: flex-start !important; padding: 2px !important; overflow: hidden !important; }
   .cell-counter { display: none !important; }
   .placed { width: 50% !important; font-size: 8.5pt !important; border: none !important; padding: 0 1px !important; margin-bottom: 0 !important; white-space: nowrap !important; line-height: 1.2 !important; }
+  
+  .placed.contratto-fisso { background-color: #e0e0e0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 body.print-mode { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; position: static !important; height: auto !important; }
@@ -223,6 +232,8 @@ body.print-mode #grid tr { height: 132px !important; }
 body.print-mode .cell { min-height: 0 !important; height: 100% !important; border: none !important; display: flex !important; flex-wrap: wrap !important; align-content: flex-start !important; padding: 2px !important; overflow: hidden !important; }
 body.print-mode .cell-counter { display: none !important; }
 body.print-mode .placed { width: 50% !important; font-size: 8.5pt !important; border: none !important; padding: 0 1px !important; margin-bottom: 0 !important; white-space: nowrap !important; line-height: 1.2 !important; }
+
+body.print-mode .placed.contratto-fisso { background-color: #e0e0e0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
 .toast { visibility: hidden; min-width: 200px; background-color: #323232; color: #fff; text-align: center; border-radius: 8px; padding: 12px 20px; position: fixed; z-index: 9999; left: 50%; bottom: 20px; transform: translateX(-50%); font-size: 14px; font-weight: 500; box-shadow: 0px 4px 10px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; pointer-events: none; }
 .toast.show { visibility: visible; opacity: 1; bottom: 40px; }
