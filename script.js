@@ -502,6 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
+
  async function gestisciEsportazione(azione) {
     const element = document.getElementById('main');
     const originalTitle = document.title;
@@ -542,28 +543,34 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // Browser
             
-            // CONTROLLO INTELLIGENTE EVOLUTO: Trova anche gli iPad moderni che fingono di essere Mac
+            // Trova iPad moderni e tutti i dispositivi mobili
             const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 
                                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-            if (isMobileDevice && azione === 'pdf' && navigator.share) {
-                // COMPORTAMENTO MOBILE
+            if (isMobileDevice && azione === 'pdf') {
+                // COMPORTAMENTO MOBILE: Genera il PDF come Blob e FORZA la condivisione
                 const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
                 const file = new File([pdfBlob], finalFilename, { type: 'application/pdf' });
                 
-                try {
-                    await navigator.share({ title: 'Turni Boschetto', files: [file] });
-                } catch (shareError) {
-                    // Ignora silenziosamente l'errore se l'utente ha solo annullato la condivisione
-                    if (shareError.name !== 'AbortError') {
-                        throw shareError;
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({ title: 'Turni Boschetto', files: [file] });
+                    } catch (shareError) {
+                         if (shareError.name !== 'AbortError') throw shareError;
                     }
+                } else {
+                     // Ultima spiaggia assoluta: se anche la condivisione fallisce, usa il link
+                     const blobUrl = URL.createObjectURL(pdfBlob);
+                     const link = document.createElement('a');
+                     link.href = blobUrl;
+                     link.download = finalFilename;
+                     link.click();
+                     URL.revokeObjectURL(blobUrl);
                 }
             } else if (azione === 'stampa') {
-                // STAMPA
                 window.print();
             } else {
-                // COMPORTAMENTO DESKTOP
+                // COMPORTAMENTO DESKTOP: Download normale del file
                 await html2pdf().from(element).set(opt).save();
             }
         }
