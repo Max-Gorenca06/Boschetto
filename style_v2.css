@@ -158,6 +158,11 @@ tr { border-bottom: 1px solid #ccc; }
     background-color: #fff;
     padding-top: 40px; 
   }
+  /* Nasconde la lista personale e il suo titolo sul telefono */
+  #sidebar.mobile-open h3, 
+  #sidebar.mobile-open #sidebar-content {
+    display: none !important;
+  }
   
   #mobile-close-sidebar { display: block !important; position: absolute; top: 5px; right: 15px; }
   .mobile-day-selector { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }

@@ -540,15 +540,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: azione === 'stampa' ? 'Stampa Turni' : 'Esporta PDF',
                 url: savedFile.uri
             });
-        } else {
-            // Se siamo su PC o Safari
+        }else {
+            // Siamo su PC o su browser Mobile (Safari/Chrome)
             if (azione === 'stampa') {
                 window.print(); 
             } else {
-                await html2pdf().from(element).set(opt).save();
+                // 1. Generiamo il Blob di dati puri
+                const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
+                
+                // 2. Lo trasformiamo in un VERO file PDF
+                const file = new File([pdfBlob], finalFilename, { type: 'application/pdf' });
+
+                // 3. Chiediamo al browser se sa aprire il menu di condivisione nativo
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            title: 'Turni Boschetto',
+                            files: [file]
+                        });
+                    } catch (e) {
+                        console.log("Condivisione annullata dall'utente", e);
+                    }
+                } else {
+                    // 4. Fallback per il PC: forza il download classico se navigator.share non esiste
+                    const blobUrl = URL.createObjectURL(pdfBlob);
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = finalFilename;
+                    link.click();
+                    URL.revokeObjectURL(blobUrl);
+                }
             }
         }
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Errore:", error);
         showToast("Errore durante l'operazione");
     } finally {
