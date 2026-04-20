@@ -504,6 +504,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
 
  async function gestisciEsportazione(azione) {
+    // Chiude la barra laterale se è aperta su mobile prima di stampare
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('mobile-open');
     const element = document.getElementById('main');
     const originalTitle = document.title;
     
