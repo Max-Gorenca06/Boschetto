@@ -541,36 +541,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 url: savedFile.uri
             });
         } else {
-            // Browser
-            
-            // Trova iPad moderni e tutti i dispositivi mobili
+            // Browser (Safari, Chrome iOS, PC, Android)
             const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 
                                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
             if (isMobileDevice && azione === 'pdf') {
-                // COMPORTAMENTO MOBILE: Genera il PDF come Blob e FORZA la condivisione
                 const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
                 const file = new File([pdfBlob], finalFilename, { type: 'application/pdf' });
                 
                 if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    // Safari / Android Chrome: Menu condivisione nativo
                     try {
                         await navigator.share({ title: 'Turni Boschetto', files: [file] });
                     } catch (shareError) {
                          if (shareError.name !== 'AbortError') throw shareError;
                     }
                 } else {
-                     // Ultima spiaggia assoluta: se anche la condivisione fallisce, usa il link
-                     const blobUrl = URL.createObjectURL(pdfBlob);
-                     const link = document.createElement('a');
-                     link.href = blobUrl;
-                     link.download = finalFilename;
-                     link.click();
-                     URL.revokeObjectURL(blobUrl);
+                     // CHROME iOS: Non supporta share di file. Generiamo un Data URI e lo apriamo a schermo.
+                     const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
+                     window.location.href = pdfDataUri;
                 }
             } else if (azione === 'stampa') {
                 window.print();
             } else {
-                // COMPORTAMENTO DESKTOP: Download normale del file
+                // PC DESKTOP: Download classico infallibile
                 await html2pdf().from(element).set(opt).save();
             }
         }
