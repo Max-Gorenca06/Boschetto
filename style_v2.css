@@ -194,7 +194,14 @@ tr { border-bottom: 1px solid #ccc; }
   #mobile-close-sidebar { display: block !important; position: absolute; top: 5px; right: 15px; }
   .mobile-day-selector { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
   #mobile-current-day { font-size: 18px; color: #1f4e9a; margin: 0; text-transform: uppercase; }
-  .mobile-shift-card { background: #fff; border-radius: 12px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); border-left: 5px solid #2b8cff; }
+.mobile-shift-card { 
+  background: #fff; 
+  border-radius: 12px; 
+  padding: 15px; 
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
+  border-left: 5px solid #2b8cff; 
+  margin-bottom: 15px; /* IL MARGINE MAGICO CHE LE SEPARA */
+}
   .mobile-shift-title { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px; }
   .mobile-add-btn { background: #28a745; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 20px; line-height: 1; cursor: pointer; display: flex; justify-content: center; align-items: center; }
   .mobile-person-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; border-bottom: 1px dashed #f0f0f0; }
