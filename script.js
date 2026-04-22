@@ -505,6 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
  
   // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
+  // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
   async function gestisciEsportazione(azione) {
     const element = document.getElementById('main');
     const originalTitle = document.title;
@@ -515,17 +516,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     showToast(azione === 'stampa' ? "Preparazione stampa..." : "Generazione PDF in corso...");
     
-    // 1. Modifica il DOM (Applica classi per la stampa e chiude la barra laterale)
     document.body.classList.add('print-mode');
     window.scrollTo(0, 0);
 
+    // Chiude la sidebar se è aperta
     const sidebar = document.getElementById('sidebar');
     if (sidebar) sidebar.classList.remove('mobile-open');
 
-    // 2. IL TRUCCO SALVA-CHROME: Diamo al browser 400 millisecondi per aggiornare la grafica.
-    // Se non aspettiamo, Chrome va in panico cercando di "fotografare" elementi che si stanno muovendo
-    // e congela l'intera app in un loop infinito (ecco perché ti restava la scritta a schermo).
-    await new Promise(resolve => setTimeout(resolve, 400));
+    // Pausa millimetrica per permettere al browser di aggiornare lo schermo
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     const opt = {
         margin: [2, 2, 2, 2],
@@ -537,58 +536,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
         if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-            // App Nativa Xcode
+            // App Nativa (iPad)
             const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
             const base64Data = pdfDataUri.split(',')[1];
-
             const savedFile = await window.Capacitor.Plugins.Filesystem.writeFile({
                 path: finalFilename, data: base64Data, directory: 'CACHE' 
             });
-
             await window.Capacitor.Plugins.Share.share({
                 title: azione === 'stampa' ? 'Stampa Turni' : 'Esporta PDF', url: savedFile.uri
             });
         } else {
-            // BROWSER (PC, Safari, Chrome iOS, Samsung Internet, ecc.)
+            // BROWSER STANDARD
             if (azione === 'stampa') {
                 window.print();
             } else {
-                const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
-                let condiviso = false;
-
                 const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 
                                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-                if (isMobileDevice && navigator.share) {
-                    try {
-                        const file = new File([pdfBlob], finalFilename, { type: 'application/pdf' });
-                        if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-                            await navigator.share({ title: 'Turni Boschetto', files: [file] });
-                            condiviso = true;
-                        }
-                    } catch (shareError) {
-                        // Ignoriamo solo se l'utente ha chiuso il menu di condivisione volontariamente
-                        if (shareError.name === 'AbortError') {
-                            condiviso = true; 
-                        } else {
-                            console.warn("Condivisione rifiutata dal browser, passo al download diretto:", shareError);
+                if (isMobileDevice) {
+                    const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
+                    let condiviso = false;
+
+                    // TENTATIVO A: Condivisione Nativa (Safari, alcuni Android)
+                    if (navigator.share) {
+                        try {
+                            const file = new File([pdfBlob], finalFilename, { type: 'application/pdf' });
+                            if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+                                await navigator.share({ title: 'Turni Boschetto', files: [file] });
+                                condiviso = true;
+                            }
+                        } catch (shareError) {
+                            if (shareError.name === 'AbortError') condiviso = true; 
                         }
                     }
-                }
 
-                // FALLBACK DI SICUREZZA
-                if (!condiviso) {
-                    const blobUrl = URL.createObjectURL(pdfBlob);
-                    const link = document.createElement('a');
-                    link.href = blobUrl;
-                    link.download = finalFilename;
-                    
-                    // Niente target="_blank" qui, sennò Chrome iOS blocca il popup!
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                    setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+                    // TENTATIVO B: IL PARACADUTE INFALLIBILE PER CHROME iOS E SAMSUNG
+                    if (!condiviso) {
+                        const blobUrl = URL.createObjectURL(pdfBlob);
+                        
+                        // Creiamo un overlay visivo con un pulsante vero
+                        const overlay = document.createElement('div');
+                        overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;backdrop-filter:blur(5px);";
+
+                        const title = document.createElement('h2');
+                        title.textContent = "📄 Il tuo PDF è pronto!";
+                        title.style.marginBottom = "30px";
+
+                        const btn = document.createElement('a');
+                        btn.href = blobUrl;
+                        btn.download = finalFilename;
+                        btn.target = "_blank"; // Indispensabile per eludere il blocco
+                        btn.textContent = "Tocca qui per Aprire / Salvare";
+                        btn.style.cssText = "background:#28a745;padding:20px 40px;font-size:20px;text-decoration:none;border-radius:10px;color:white;font-weight:bold;box-shadow:0 4px 15px rgba(40,167,69,0.4);text-align:center;";
+
+                        const cancel = document.createElement('button');
+                        cancel.textContent = "Chiudi";
+                        cancel.style.cssText = "margin-top:25px;background:none;border:1px solid white;color:white;padding:10px 20px;border-radius:5px;font-size:16px;cursor:pointer;";
+                        cancel.onclick = () => overlay.remove();
+
+                        // Chiudiamo l'overlay un secondo dopo che l'ha toccato
+                        btn.onclick = () => setTimeout(() => overlay.remove(), 1000);
+
+                        overlay.appendChild(title);
+                        overlay.appendChild(btn);
+                        overlay.appendChild(cancel);
+                        document.body.appendChild(overlay);
+                    }
+                } else {
+                    // PC DESKTOP: Metodo classico infallibile
+                    await html2pdf().from(element).set(opt).save();
                 }
             }
         }
@@ -599,8 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
         document.body.classList.remove('print-mode');
         document.title = originalTitle;
-        
-        // Sblocco d'emergenza del toast in caso di errori passati
+        // Ripulisce il toast se era bloccato
         const toast = document.getElementById("toast-notification");
         if(toast) toast.classList.remove("show");
     }
