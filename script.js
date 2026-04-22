@@ -503,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   
 
- /
+ 
   // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
   async function gestisciEsportazione(azione) {
     const element = document.getElementById('main');
