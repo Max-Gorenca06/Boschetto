@@ -155,7 +155,17 @@ tr { border-bottom: 1px solid #ccc; }
 
 /* VISTA TELEFONO */
 #mobile-view {
-  display: none; width: 100%; flex-direction: column; gap: 15px; padding-bottom: 30px;
+  display: none; 
+  width: 100%; 
+  flex-direction: column; 
+  gap: 15px; 
+  padding-bottom: 30px;
+  
+  /* AGGIUNTE PER RISOLVERE L'ACCAVALLAMENTO DELL'APP */
+  padding-top: max(20px, env(safe-area-inset-top)); /* Rispetta orologio e batteria */
+  padding-left: 10px; /* Dà un po' di spazio ai lati per non far toccare lo schermo */
+  padding-right: 10px;
+  box-sizing: border-box;
 }
 
 @media (max-width: 600px) {
