@@ -503,7 +503,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   
 
- // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
+ /
+  // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
   async function gestisciEsportazione(azione) {
     const element = document.getElementById('main');
     const originalTitle = document.title;
@@ -512,14 +513,19 @@ document.addEventListener('DOMContentLoaded', () => {
     customName = customName.replace(/\//g, '-');
     const finalFilename = `${customName}.pdf`;
     
-    showToast(azione === 'stampa' ? "Preparazione stampa..." : "Generazione PDF...");
+    showToast(azione === 'stampa' ? "Preparazione stampa..." : "Generazione PDF in corso...");
     
+    // 1. Modifica il DOM (Applica classi per la stampa e chiude la barra laterale)
     document.body.classList.add('print-mode');
     window.scrollTo(0, 0);
 
-    // Chiude la barra laterale se è aperta su mobile prima di esportare/stampare
     const sidebar = document.getElementById('sidebar');
     if (sidebar) sidebar.classList.remove('mobile-open');
+
+    // 2. IL TRUCCO SALVA-CHROME: Diamo al browser 400 millisecondi per aggiornare la grafica.
+    // Se non aspettiamo, Chrome va in panico cercando di "fotografare" elementi che si stanno muovendo
+    // e congela l'intera app in un loop infinito (ecco perché ti restava la scritta a schermo).
+    await new Promise(resolve => setTimeout(resolve, 400));
 
     const opt = {
         margin: [2, 2, 2, 2],
@@ -531,66 +537,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
         if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-            // App Nativa Xcode (iPad)
+            // App Nativa Xcode
             const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
             const base64Data = pdfDataUri.split(',')[1];
 
             const savedFile = await window.Capacitor.Plugins.Filesystem.writeFile({
-                path: finalFilename,
-                data: base64Data,
-                directory: 'CACHE' 
+                path: finalFilename, data: base64Data, directory: 'CACHE' 
             });
 
             await window.Capacitor.Plugins.Share.share({
-                title: azione === 'stampa' ? 'Stampa Turni' : 'Esporta PDF',
-                url: savedFile.uri
+                title: azione === 'stampa' ? 'Stampa Turni' : 'Esporta PDF', url: savedFile.uri
             });
         } else {
             // BROWSER (PC, Safari, Chrome iOS, Samsung Internet, ecc.)
             if (azione === 'stampa') {
                 window.print();
             } else {
-                // Generiamo i dati puri (Blob) - il formato più sicuro per i file
                 const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
                 let condiviso = false;
 
-                // Capiamo se è un dispositivo mobile
                 const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 
                                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-                // 1. TENTATIVO CONDIVISIONE NATIVA (Solo su Mobile)
                 if (isMobileDevice && navigator.share) {
                     try {
                         const file = new File([pdfBlob], finalFilename, { type: 'application/pdf' });
-                        // Verifica extra per browser problematici
                         if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
                             await navigator.share({ title: 'Turni Boschetto', files: [file] });
                             condiviso = true;
                         }
                     } catch (shareError) {
-                        // Se l'utente chiude la tendina senza condividere, ignoriamo
+                        // Ignoriamo solo se l'utente ha chiuso il menu di condivisione volontariamente
                         if (shareError.name === 'AbortError') {
                             condiviso = true; 
                         } else {
-                            console.warn("Condivisione nativa rifiutata dal browser, passo al download:", shareError);
+                            console.warn("Condivisione rifiutata dal browser, passo al download diretto:", shareError);
                         }
                     }
                 }
 
-                // 2. FALLBACK DI SICUREZZA (Per PC, Chrome iOS, Samsung Internet)
-                // Se la condivisione non è partita, usiamo il metodo "Link Invisibile" infallibile
+                // FALLBACK DI SICUREZZA
                 if (!condiviso) {
                     const blobUrl = URL.createObjectURL(pdfBlob);
                     const link = document.createElement('a');
                     link.href = blobUrl;
                     link.download = finalFilename;
-                    link.target = '_blank'; // Fondamentale per i browser mobile ostici
                     
+                    // Niente target="_blank" qui, sennò Chrome iOS blocca il popup!
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
                     
-                    // Pulizia della memoria dopo 2 secondi
                     setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
                 }
             }
@@ -600,9 +597,12 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Errore:", error);
         showToast("Errore durante l'operazione");
     } finally {
-        // Ripristiniamo la visualizzazione normale
         document.body.classList.remove('print-mode');
         document.title = originalTitle;
+        
+        // Sblocco d'emergenza del toast in caso di errori passati
+        const toast = document.getElementById("toast-notification");
+        if(toast) toast.classList.remove("show");
     }
   }
 
