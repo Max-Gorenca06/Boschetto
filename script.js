@@ -508,6 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
 // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
 // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
+ // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
   async function gestisciEsportazione(azione) {
     const element = document.getElementById('main');
     const originalTitle = document.title;
@@ -516,16 +517,17 @@ document.addEventListener('DOMContentLoaded', () => {
     customName = customName.replace(/\//g, '-');
     const finalFilename = `${customName}.pdf`;
     
-    showToast(azione === 'stampa' ? "Preparazione stampa..." : "Generazione PDF in corso...");
+    showToast(azione === 'stampa' ? "Preparazione stampa..." : "Generazione in corso...");
     
     document.body.classList.add('print-mode');
+    
+    // Cambiamo temporaneamente il titolo del sito così il PDF nativo prenderà questo nome!
+    document.title = customName; 
     window.scrollTo(0, 0);
 
-    // Chiude la sidebar se è aperta
     const sidebar = document.getElementById('sidebar');
     if (sidebar) sidebar.classList.remove('mobile-open');
 
-    // Pausa millimetrica per permettere al browser di aggiornare lo schermo (Anti-Crash Chrome)
     await new Promise(resolve => setTimeout(resolve, 400));
 
     const opt = {
@@ -538,7 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
         if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-            // App Nativa (iPad)
+            // App Nativa iPad (Xcode)
             const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
             const base64Data = pdfDataUri.split(',')[1];
             const savedFile = await window.Capacitor.Plugins.Filesystem.writeFile({
@@ -559,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
                     let condiviso = false;
 
-                    // TENTATIVO A: Condivisione Nativa (Safari, Android)
+                    // TENTATIVO A: Condivisione Nativa File 
                     if (navigator.share) {
                         try {
                             const file = new File([pdfBlob], finalFilename, { type: 'application/pdf' });
@@ -572,42 +574,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
-                    // TENTATIVO B: IL LETTORE INTERNO INIETTATO (L'arma finale per Chrome iOS)
+                    // TENTATIVO B: LA MOSSA DI JUDO (Senza blocchi strani)
                     if (!condiviso) {
-                        // Creiamo il datauristring invece del blobUrl
-                        const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
-                        
-                        // Creiamo un overlay che fa da "schermo intero"
-                        const overlay = document.createElement('div');
-                        overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:#525659;z-index:999999;display:flex;flex-direction:column;";
-
-                        // Barra superiore stile browser
-                        const header = document.createElement('div');
-                        header.style.cssText = "padding:12px 15px;background:#323639;display:flex;justify-content:space-between;align-items:center;color:white;box-shadow:0 2px 5px rgba(0,0,0,0.5);z-index:2;";
-                        
-                        const title = document.createElement('div');
-                        title.textContent = "📄 Usa il tasto Condividi/Stampa del browser";
-                        title.style.cssText = "font-size:14px;font-weight:bold;";
-
-                        const closeBtn = document.createElement('button');
-                        closeBtn.textContent = "Chiudi";
-                        closeBtn.style.cssText = "background:#ff4444;border:none;color:white;padding:6px 12px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:14px;";
-                        closeBtn.onclick = () => overlay.remove();
-
-                        header.appendChild(title);
-                        header.appendChild(closeBtn);
-
-                        // Inseriamo il PDF tramite i dati puri (bypass del blocco sicurezza iOS)
-                        const iframe = document.createElement('iframe');
-                        iframe.src = pdfDataUri; 
-                        iframe.style.cssText = "width:100%;flex:1;border:none;background:#fff;";
-
-                        overlay.appendChild(header);
-                        overlay.appendChild(iframe);
-                        document.body.appendChild(overlay);
+                        showToast("Apertura anteprima di sistema...");
+                        setTimeout(() => {
+                            window.print();
+                        }, 500);
                     }
                 } else {
-                    // PC DESKTOP: Metodo classico infallibile
+                    // PC DESKTOP: Download classico
                     await html2pdf().from(element).set(opt).save();
                 }
             }
@@ -617,11 +592,12 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Errore:", error);
         showToast("Errore durante l'operazione");
     } finally {
-        document.body.classList.remove('print-mode');
-        document.title = originalTitle;
-        // Ripulisce il toast
-        const toast = document.getElementById("toast-notification");
-        if(toast) toast.classList.remove("show");
+        setTimeout(() => {
+            document.body.classList.remove('print-mode');
+            document.title = originalTitle; 
+            const toast = document.getElementById("toast-notification");
+            if(toast) toast.classList.remove("show");
+        }, 1000);
     }
   }
 
