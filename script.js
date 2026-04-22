@@ -507,6 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
   // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
 // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
+// --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
   async function gestisciEsportazione(azione) {
     const element = document.getElementById('main');
     const originalTitle = document.title;
@@ -571,37 +572,38 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
-                    // TENTATIVO B: IL PARACADUTE INFALLIBILE PER CHROME iOS
+                    // TENTATIVO B: IL LETTORE INTERNO INIETTATO (L'arma finale per Chrome iOS)
                     if (!condiviso) {
-                        // Usiamo datauristring INVECE del blob per fregare il blocco di iOS
+                        // Creiamo il datauristring invece del blobUrl
                         const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
                         
+                        // Creiamo un overlay che fa da "schermo intero"
                         const overlay = document.createElement('div');
-                        overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;backdrop-filter:blur(5px);";
+                        overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:#525659;z-index:999999;display:flex;flex-direction:column;";
 
-                        const title = document.createElement('h2');
-                        title.textContent = "📄 Il tuo PDF è pronto!";
-                        title.style.marginBottom = "30px";
-
-                        const btn = document.createElement('a');
-                        btn.href = pdfDataUri; // Passiamo i dati puri come testo
-                        btn.target = "_blank"; // Nuova scheda
-                        // NESSUN ATTRIBUTO "DOWNLOAD" QUI. È quello che bloccava tutto!
+                        // Barra superiore stile browser
+                        const header = document.createElement('div');
+                        header.style.cssText = "padding:12px 15px;background:#323639;display:flex;justify-content:space-between;align-items:center;color:white;box-shadow:0 2px 5px rgba(0,0,0,0.5);z-index:2;";
                         
-                        btn.textContent = "Apri il PDF";
-                        btn.style.cssText = "background:#28a745;padding:20px 40px;font-size:20px;text-decoration:none;border-radius:10px;color:white;font-weight:bold;box-shadow:0 4px 15px rgba(40,167,69,0.4);text-align:center;";
+                        const title = document.createElement('div');
+                        title.textContent = "📄 Usa il tasto Condividi/Stampa del browser";
+                        title.style.cssText = "font-size:14px;font-weight:bold;";
 
-                        const cancel = document.createElement('button');
-                        cancel.textContent = "Chiudi";
-                        cancel.style.cssText = "margin-top:25px;background:none;border:1px solid white;color:white;padding:10px 20px;border-radius:5px;font-size:16px;cursor:pointer;";
-                        cancel.onclick = () => overlay.remove();
+                        const closeBtn = document.createElement('button');
+                        closeBtn.textContent = "Chiudi";
+                        closeBtn.style.cssText = "background:#ff4444;border:none;color:white;padding:6px 12px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:14px;";
+                        closeBtn.onclick = () => overlay.remove();
 
-                        // Rimuoviamo la schermata scura appena l'utente clicca
-                        btn.onclick = () => setTimeout(() => overlay.remove(), 500);
+                        header.appendChild(title);
+                        header.appendChild(closeBtn);
 
-                        overlay.appendChild(title);
-                        overlay.appendChild(btn);
-                        overlay.appendChild(cancel);
+                        // Inseriamo il PDF tramite i dati puri (bypass del blocco sicurezza iOS)
+                        const iframe = document.createElement('iframe');
+                        iframe.src = pdfDataUri; 
+                        iframe.style.cssText = "width:100%;flex:1;border:none;background:#fff;";
+
+                        overlay.appendChild(header);
+                        overlay.appendChild(iframe);
                         document.body.appendChild(overlay);
                     }
                 } else {
@@ -617,7 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
         document.body.classList.remove('print-mode');
         document.title = originalTitle;
-        // Ripulisce il toast in caso di inceppamenti
+        // Ripulisce il toast
         const toast = document.getElementById("toast-notification");
         if(toast) toast.classList.remove("show");
     }
