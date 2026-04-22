@@ -506,6 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
  
   // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
   // --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
+// --- FUNZIONE UNIFICATA PER STAMPA E PDF ---
   async function gestisciEsportazione(azione) {
     const element = document.getElementById('main');
     const originalTitle = document.title;
@@ -523,8 +524,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');
     if (sidebar) sidebar.classList.remove('mobile-open');
 
-    // Pausa millimetrica per permettere al browser di aggiornare lo schermo
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Pausa millimetrica per permettere al browser di aggiornare lo schermo (Anti-Crash Chrome)
+    await new Promise(resolve => setTimeout(resolve, 400));
 
     const opt = {
         margin: [2, 2, 2, 2],
@@ -557,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
                     let condiviso = false;
 
-                    // TENTATIVO A: Condivisione Nativa (Safari, alcuni Android)
+                    // TENTATIVO A: Condivisione Nativa (Safari, Android)
                     if (navigator.share) {
                         try {
                             const file = new File([pdfBlob], finalFilename, { type: 'application/pdf' });
@@ -570,11 +571,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
-                    // TENTATIVO B: IL PARACADUTE INFALLIBILE PER CHROME iOS E SAMSUNG
+                    // TENTATIVO B: IL PARACADUTE INFALLIBILE PER CHROME iOS
                     if (!condiviso) {
-                        const blobUrl = URL.createObjectURL(pdfBlob);
+                        // Usiamo datauristring INVECE del blob per fregare il blocco di iOS
+                        const pdfDataUri = await html2pdf().from(element).set(opt).output('datauristring');
                         
-                        // Creiamo un overlay visivo con un pulsante vero
                         const overlay = document.createElement('div');
                         overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;backdrop-filter:blur(5px);";
 
@@ -583,10 +584,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         title.style.marginBottom = "30px";
 
                         const btn = document.createElement('a');
-                        btn.href = blobUrl;
-                        btn.download = finalFilename;
-                        btn.target = "_blank"; // Indispensabile per eludere il blocco
-                        btn.textContent = "Tocca qui per Aprire / Salvare";
+                        btn.href = pdfDataUri; // Passiamo i dati puri come testo
+                        btn.target = "_blank"; // Nuova scheda
+                        // NESSUN ATTRIBUTO "DOWNLOAD" QUI. È quello che bloccava tutto!
+                        
+                        btn.textContent = "Apri il PDF";
                         btn.style.cssText = "background:#28a745;padding:20px 40px;font-size:20px;text-decoration:none;border-radius:10px;color:white;font-weight:bold;box-shadow:0 4px 15px rgba(40,167,69,0.4);text-align:center;";
 
                         const cancel = document.createElement('button');
@@ -594,8 +596,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         cancel.style.cssText = "margin-top:25px;background:none;border:1px solid white;color:white;padding:10px 20px;border-radius:5px;font-size:16px;cursor:pointer;";
                         cancel.onclick = () => overlay.remove();
 
-                        // Chiudiamo l'overlay un secondo dopo che l'ha toccato
-                        btn.onclick = () => setTimeout(() => overlay.remove(), 1000);
+                        // Rimuoviamo la schermata scura appena l'utente clicca
+                        btn.onclick = () => setTimeout(() => overlay.remove(), 500);
 
                         overlay.appendChild(title);
                         overlay.appendChild(btn);
@@ -615,7 +617,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
         document.body.classList.remove('print-mode');
         document.title = originalTitle;
-        // Ripulisce il toast se era bloccato
+        // Ripulisce il toast in caso di inceppamenti
         const toast = document.getElementById("toast-notification");
         if(toast) toast.classList.remove("show");
     }
