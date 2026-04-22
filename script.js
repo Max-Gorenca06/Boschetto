@@ -341,6 +341,8 @@ document.addEventListener('DOMContentLoaded', () => {
     Object.keys(groups).sort().forEach(g => {
       const div = document.createElement('div');
       div.innerHTML = `<div class="group-title">${g}</div>`;
+      // --- AGGIUNTA: Ordina le persone del gruppo mettendo i fissi in cima ---
+      groups[g].sort((a, b) => (b.is_fisso ? 1 : 0) - (a.is_fisso ? 1 : 0));
       groups[g].forEach(p => {
         const b = document.createElement('div');
         b.className = 'block';
@@ -617,52 +619,84 @@ document.addEventListener('DOMContentLoaded', () => {
   
   elements.closeModalBtn.addEventListener('click', () => elements.staffModal.classList.remove('show'));
   
+  // Mini-funzione per creare la riga di ogni dipendente senza ripetere il codice
+  function createStaffListItem(p) {
+      const isFissoStr = p.is_fisso ? '<span style="background: #e0e0e0; color: #555; padding: 2px 5px; border-radius: 3px; font-size: 10px;">Fisso</span>' : '';
+      const li = document.createElement('li');
+      li.innerHTML = `
+          <span style="display: flex; align-items: center; gap: 5px;">${p.name} <small>(${p.group})</small> ${isFissoStr}</span> 
+          <div>
+              <button class="btn secondary btn-edit" style="padding: 2px 8px; font-size: 11px;">Modifica</button>
+              <button class="btn secondary btn-del" style="padding: 2px 8px; font-size: 11px; color:red; border-color:red;">X</button>
+          </div>
+      `;
+
+      // Logica tasto Modifica
+      li.querySelector('.btn-edit').addEventListener('click', () => {
+          elements.staffForm.style.display = 'flex';
+          elements.addNewStaffBtn.style.display = 'none';
+          document.getElementById('staff-name').value = p.name;
+          document.getElementById('staff-group').value = p.group;
+          document.getElementById('staff-max-shifts').value = p.maxShifts;
+          document.getElementById('original-name').value = p.id; 
+          document.getElementById('staff-fisso').checked = p.is_fisso || false;
+      });
+
+      // Logica tasto Elimina
+      li.querySelector('.btn-del').addEventListener('click', async () => {
+          if (isOffline) return alert("Sei offline! Impossibile eliminare il personale.");
+          
+          if(confirm(`Eliminare ${p.name}? Verrà rimosso anche dai turni.`)) {
+              await supabaseClient.from('staff').delete().eq('id', p.id);
+              document.querySelectorAll(`.placed[data-name="${p.name}"]`).forEach(el => {
+                  const parent = el.parentElement;
+                  el.remove();
+                  updateCellCounter(parent);
+              });
+              await loadStaff(); 
+              populateSidebar(); 
+              populateStaffModal();
+              await saveState(); 
+              if (typeof renderMobileView === 'function') renderMobileView();
+          }
+      });
+      return li;
+  }
+
+  // La nuova funzione principale che divide e impagina
   function populateStaffModal() {
-    elements.staffList.innerHTML = '';
-    const ul = document.createElement('ul');
-    staff.forEach(p => {
-        const isFissoStr = p.is_fisso ? '<span style="background: #e0e0e0; color: #555; padding: 2px 5px; border-radius: 3px; font-size: 10px;">Fisso</span>' : '';
-        const li = document.createElement('li');
-        li.innerHTML = `
-            <span style="display: flex; align-items: center; gap: 5px;">${p.name} <small>(${p.group})</small> ${isFissoStr}</span> 
-            <div>
-                <button class="btn secondary btn-edit" style="padding: 2px 8px; font-size: 11px;">Modifica</button>
-                <button class="btn secondary btn-del" style="padding: 2px 8px; font-size: 11px; color:red; border-color:red;">X</button>
-            </div>
-        `;
+      elements.staffList.innerHTML = '';
 
-        li.querySelector('.btn-edit').addEventListener('click', () => {
-            elements.staffForm.style.display = 'flex';
-            elements.addNewStaffBtn.style.display = 'none';
-            document.getElementById('staff-name').value = p.name;
-            document.getElementById('staff-group').value = p.group;
-            document.getElementById('staff-max-shifts').value = p.maxShifts;
-            document.getElementById('original-name').value = p.id; 
-            document.getElementById('staff-fisso').checked = p.is_fisso || false;
-        });
+      // 1. BLOCCO PERSONALE FISSO
+      const fissi = staff.filter(p => p.is_fisso);
+      if (fissi.length > 0) {
+          const h3Fissi = document.createElement('h3');
+          h3Fissi.textContent = '🔒 PERSONALE FISSO';
+          h3Fissi.className = 'staff-modal-section-title';
+          elements.staffList.appendChild(h3Fissi);
 
-        li.querySelector('.btn-del').addEventListener('click', async () => {
-            if (isOffline) {
-                alert("Sei offline! Impossibile eliminare il personale.");
-                return;
-            }
-            if(confirm(`Eliminare ${p.name}? Verrà rimosso anche dai turni.`)) {
-                await supabaseClient.from('staff').delete().eq('id', p.id);
-                document.querySelectorAll(`.placed[data-name="${p.name}"]`).forEach(el => {
-                    const parent = el.parentElement;
-                    el.remove();
-                    updateCellCounter(parent);
-                });
-                await loadStaff(); 
-                populateSidebar(); 
-                populateStaffModal();
-                await saveState(); 
-                if (typeof renderMobileView === 'function') renderMobileView();
-            }
-        });
-        ul.appendChild(li);
-    });
-    elements.staffList.appendChild(ul);
+          const ulFissi = document.createElement('ul');
+          fissi.forEach(p => ulFissi.appendChild(createStaffListItem(p)));
+          elements.staffList.appendChild(ulFissi);
+      }
+
+      // 2. BLOCCHI A CHIAMATA (Divisi per reparto usando .reduce)
+      const aChiamata = staff.filter(p => !p.is_fisso);
+      const groups = aChiamata.reduce((acc, p) => { 
+          (acc[p.group || 'Sala'] ||= []).push(p); 
+          return acc; 
+      }, {});
+
+      Object.keys(groups).sort().forEach(g => {
+          const h3Group = document.createElement('h3');
+          h3Group.textContent = `📋 A CHIAMATA - ${g.toUpperCase()}`;
+          h3Group.className = 'staff-modal-section-title';
+          elements.staffList.appendChild(h3Group);
+
+          const ulGroup = document.createElement('ul');
+          groups[g].forEach(p => ulGroup.appendChild(createStaffListItem(p)));
+          elements.staffList.appendChild(ulGroup);
+      });
   }
   
   elements.addNewStaffBtn.addEventListener('click', () => {
@@ -1232,6 +1266,20 @@ document.getElementById('export-ics-btn')?.addEventListener('click', () => {
               ul.appendChild(li);
           });
       });
+  }
+  // =========================================
+  // REGISTRAZIONE SERVICE WORKER (PWA)
+  // =========================================
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(registration => {
+          console.log('ServiceWorker registrato con successo:', registration.scope);
+        })
+        .catch(error => {
+          console.log('Registrazione ServiceWorker fallita:', error);
+        });
+    });
   }
 
   init();

@@ -130,6 +130,23 @@ tr { border-bottom: 1px solid #ccc; }
 
 #staff-list-container ul { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; row-gap: 0; padding: 0; list-style: none; }
 #staff-list-container li { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; text-transform: uppercase; font-size: 13px; }
+/* Stile per i nuovi titoli separatori nel Modale Gestione Personale */
+/* Titoli nel modale ora molto più piccoli e discreti */
+.staff-modal-section-title {
+    margin-top: 15px;
+    margin-bottom: 5px;
+    padding-bottom: 2px;
+    border-bottom: 1px solid #eee; /* Riga quasi invisibile */
+    color: #888; /* Grigio chiaro invece del blu */
+    font-size: 11px; /* Molto piccolo */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Aggiungiamo un po' di margine in basso ad ogni lista per staccarla dal titolo successivo */
+#staff-list-container ul {
+    margin-bottom: 20px;
+}
 #staff-form { margin-top: 15px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
 #staff-form input[type="text"], #staff-form input[type="number"], #staff-form select { padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
 .header-container { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 5px; margin-top: -10px; flex-shrink: 0; }
