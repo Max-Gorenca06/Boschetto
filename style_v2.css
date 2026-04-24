@@ -184,6 +184,8 @@ tr { border-bottom: 1px solid #ccc; }
     box-shadow: 5px 0 15px rgba(0,0,0,0.5);
     background-color: #fff;
     padding-top: 40px; 
+    box-sizing: border-box; /* Obbliga il padding a rimanere DENTRO i limiti */
+    overflow-y: auto !important; /* Forza lo scorrimento interno col dito */
   }
   /* Nasconde la lista personale e il suo titolo sul telefono */
   #sidebar.mobile-open h3, 
