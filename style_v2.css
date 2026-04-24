@@ -22,12 +22,12 @@ html, body {
   box-sizing: border-box;
   flex-shrink: 0;
   height: 100%;
-  -webkit-overflow-scrolling: touch; /* Rende fluido lo scorrimento su iPad */
+  -webkit-overflow-scrolling: touch;
 }
 
 #main {
   flex: 1;
-  padding: 12px 12px 2px 12px; /* Ridotto il padding in basso per la Sala Cena */
+  padding: 12px 12px 2px 12px;
   overflow: auto; 
   box-sizing: border-box;
   display: flex;
@@ -36,19 +36,9 @@ html, body {
   height: 100%;
 }
 
-.draggable-person {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.draggable-person { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-table {
-  width: 100% !important;
-  min-width: 800px;
-  margin: 0 !important; 
-  border-collapse: collapse;
-  table-layout: fixed;
-}
+table { width: 100% !important; min-width: 800px; margin: 0 !important; border-collapse: collapse; table-layout: fixed; }
 
 th, td { border: 1px solid #ccc; padding: 0; box-sizing: border-box; vertical-align: top; background: #fff; }
 th { background: #f5f5f5; font-weight: 700; height: 40px; padding: 4px; }
@@ -57,10 +47,7 @@ th:nth-child(n+2), td:nth-child(n+2) { width: 12.85%; }
 tr { border-bottom: 1px solid #ccc; }
 
 .cell {
-  width: 100%;
-  height: 100%;
-  min-height: 140px; 
-  background: #fff;
+  width: 100%; height: 100%; min-height: 140px; background: #fff;
   display: flex; flex-direction: row; flex-wrap: wrap; align-content: flex-start;
   padding: 2px; padding-bottom: 20px; box-sizing: border-box; position: relative; 
 }
@@ -69,43 +56,19 @@ tr { border-bottom: 1px solid #ccc; }
    2. IPAD / TOUCH (La Gabbia Fissa e Fluida)
    ========================================= */
 @media (hover: none) and (min-width: 601px) {
-  html, body {
-    position: fixed; 
-    overflow: hidden;
-    overscroll-behavior: none; 
-    height: 100%; 
-    width: 100%;
+  html, body { 
+    position: fixed !important; 
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; height: 100%; 
+    overflow: hidden !important; 
+    overscroll-behavior: none; padding-top: 0 !important; 
   }
-  #sidebar, #main {
-    /* env(safe-area-inset-...) legge le dimensioni esatte delle barre fisiche dell'iPad */
-    padding-top: env(safe-area-inset-top); 
-    padding-bottom: env(safe-area-inset-bottom); 
-    box-sizing: border-box;
-  }
-
-  table {
-    /* Ora che la gabbia rispetta le barre di sistema, possiamo rimettere il 100% fisso */
-    height: 100% !important; 
-  }
-
-  #main {
-    overflow: hidden; 
-    /* Diamo 15px di respiro in basso per staccarci dal bordo nero dell'iPad */
-    padding-bottom: 15px; 
-  }
-
-  table {
-    /* Il segreto è 'auto' al posto di '100%'. Prende solo lo spazio rimanente! */
-    height: auto !important; 
-    flex: 1 1 auto;
-    min-height: 0;
-  }
-  
+  #sidebar, #main { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); box-sizing: border-box; }
+  table { height: 100% !important; }
+  #main { overflow: hidden; padding-bottom: 15px; }
+  table { height: auto !important; flex: 1 1 auto; min-height: 0; }
   #grid tr { height: 20%; } 
-
-  .cell {
-    min-height: 0 !important; 
-  }
+  .cell { min-height: 0 !important; }
 }
 
 /* Tutti gli altri stili condivisi */
@@ -128,44 +91,20 @@ tr { border-bottom: 1px solid #ccc; }
 .modal-content { background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; width: 70%; max-width: 800px; border-radius: 8px; position: relative; max-height: 85vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .close-button { position: absolute; right: 15px; top: 10px; font-size: 28px; cursor: pointer; z-index: 10; }
 
-#staff-list-container ul { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; row-gap: 0; padding: 0; list-style: none; }
+#staff-list-container ul { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; row-gap: 0; padding: 0; list-style: none; margin-bottom: 20px; }
 #staff-list-container li { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; text-transform: uppercase; font-size: 13px; }
-/* Stile per i nuovi titoli separatori nel Modale Gestione Personale */
-/* Titoli nel modale ora molto più piccoli e discreti */
-.staff-modal-section-title {
-    margin-top: 15px;
-    margin-bottom: 5px;
-    padding-bottom: 2px;
-    border-bottom: 1px solid #eee; /* Riga quasi invisibile */
-    color: #888; /* Grigio chiaro invece del blu */
-    font-size: 11px; /* Molto piccolo */
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
+.staff-modal-section-title { margin-top: 15px; margin-bottom: 5px; padding-bottom: 2px; border-bottom: 1px solid #eee; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* Aggiungiamo un po' di margine in basso ad ogni lista per staccarla dal titolo successivo */
-#staff-list-container ul {
-    margin-bottom: 20px;
-}
 #staff-form { margin-top: 15px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
 #staff-form input[type="text"], #staff-form input[type="number"], #staff-form select { padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
 .header-container { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 5px; margin-top: -10px; flex-shrink: 0; }
 .editable-title { width: 90%; border: none; background: transparent; font-size: 24px; font-weight: bold; text-align: center; color: #1f4e9a; padding: 5px; border-bottom: 2px dashed #ccc; outline: none; text-transform: uppercase; }
 .editable-title:focus { border-bottom: 2px solid #2b8cff; }
 
-/* VISTA TELEFONO */
+/* VISTA TELEFONO GENERALE */
 #mobile-view {
-  display: none; 
-  width: 100%; 
-  flex-direction: column; 
-  gap: 15px; 
-  padding-bottom: 30px;
-  
-  /* AGGIUNTE PER RISOLVERE L'ACCAVALLAMENTO DELL'APP */
-  padding-top: max(20px, env(safe-area-inset-top)); /* Rispetta orologio e batteria */
-  padding-left: 10px; /* Dà un po' di spazio ai lati per non far toccare lo schermo */
-  padding-right: 10px;
-  box-sizing: border-box;
+  display: none; width: 100%; flex-direction: column; gap: 15px; padding-bottom: 30px;
+  padding-top: max(20px, env(safe-area-inset-top)); padding-left: 10px; padding-right: 10px; box-sizing: border-box;
 }
 
 @media (max-width: 600px) {
@@ -175,78 +114,64 @@ tr { border-bottom: 1px solid #ccc; }
   table, .header-container { display: none !important; }
   #mobile-view { display: flex; }
   
-  /* MENU A SCOMPARSA */
   #sidebar { display: none !important; }
-  #sidebar.mobile-open {
-    display: block !important;
-    position: fixed; top: 0; left: 0;
-    width: 280px; height: 100%; z-index: 10000;
-    box-shadow: 5px 0 15px rgba(0,0,0,0.5);
-    background-color: #fff;
-    padding-top: 40px; 
-    box-sizing: border-box; /* Obbliga il padding a rimanere DENTRO i limiti */
-    overflow-y: auto !important; /* Forza lo scorrimento interno col dito */
-  }
-  /* Nasconde la lista personale e il suo titolo sul telefono */
-  #sidebar.mobile-open h3, 
-  #sidebar.mobile-open #sidebar-content {
-    display: none !important;
-  }
-  
+  #sidebar.mobile-open { display: block !important; position: fixed; top: 0; left: 0; width: 280px; height: 100%; z-index: 10000; box-shadow: 5px 0 15px rgba(0,0,0,0.5); background-color: #fff; padding-top: 40px; box-sizing: border-box; overflow-y: auto !important; }
+  #sidebar.mobile-open h3, #sidebar.mobile-open #sidebar-content { display: none !important; }
   #mobile-close-sidebar { display: block !important; position: absolute; top: 5px; right: 15px; }
+  
   .mobile-day-selector { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
   #mobile-current-day { font-size: 18px; color: #1f4e9a; margin: 0; text-transform: uppercase; }
-.mobile-shift-card { 
-  background: #fff; 
-  border-radius: 12px; 
-  padding: 15px; 
-  box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
-  border-left: 5px solid #2b8cff; 
-  margin-bottom: 15px; /* IL MARGINE MAGICO CHE LE SEPARA */
-}
+  .mobile-shift-card { background: #fff; border-radius: 12px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); border-left: 5px solid #2b8cff; margin-bottom: 15px; }
   .mobile-shift-title { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px; }
   .mobile-add-btn { background: #28a745; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 20px; line-height: 1; cursor: pointer; display: flex; justify-content: center; align-items: center; }
   .mobile-person-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; border-bottom: 1px dashed #f0f0f0; }
 
-  /* MIGLIORAMENTI MODALE E GESTIONE PERSONALE SU MOBILE */
   .modal { padding: 10px; box-sizing: border-box; }
-  .modal-content { 
-      width: 100% !important; 
-      padding: 15px !important; 
-      max-height: 85vh !important;
-      overflow-y: auto !important;
+  .modal-content { width: 100% !important; padding: 15px !important; max-height: 85vh !important; overflow-y: auto !important; }
+  #staff-list-container ul { grid-template-columns: 1fr !important; column-gap: 0; }
+  #staff-form { flex-direction: column; align-items: stretch; }
+  #staff-form input, #staff-form select { width: 100% !important; box-sizing: border-box; margin-bottom: 5px; }
+}
+
+.placed.contratto-fisso { background-color: #e0e0e0 !important; color: #555 !important; border: 1px solid #bbb !important; }
+
+/* ===================================================================
+   3. CLASSE ESCLUSIVA PER LA PWA (STANDALONE SU TELEFONO)
+   Si attiva SOLO ed ESCLUSIVAMENTE quando apri l'App dall'icona.
+   Blocca il pavimento/soffitto e abilita lo scorrimento solo interno.
+   =================================================================== */
+@media (display-mode: standalone) and (max-width: 600px), 
+       (display-mode: fullscreen) and (max-width: 600px) {
+  
+  html, body {
+    position: fixed !important; /* La Gabbia di Ferro */
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100% !important; height: 100% !important;
+    overflow: hidden !important; 
+    overscroll-behavior: none !important;
+    padding: 0 !important; margin: 0 !important;
   }
-  #staff-list-container ul { 
-      grid-template-columns: 1fr !important; 
-      column-gap: 0;
+
+  #mobile-view {
+    height: 100% !important;
+    overflow-y: auto !important;
+    /* Rispetta i bordi fisici dell'iPhone (Orologio sopra, barra Home sotto) */
+    padding-top: max(20px, env(safe-area-inset-top)) !important;
+    padding-bottom: max(30px, env(safe-area-inset-bottom)) !important;
   }
-  #staff-form { 
-      flex-direction: column; 
-      align-items: stretch; 
-  }
-  #staff-form input, #staff-form select { 
-      width: 100% !important; 
-      box-sizing: border-box;
-      margin-bottom: 5px;
+
+  #sidebar.mobile-open {
+    height: 100% !important;
+    overflow-y: auto !important;
+    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
   }
 }
 
-/* Colore per i contratti fissi */
-.placed.contratto-fisso {
-    background-color: #e0e0e0 !important; /* Grigio chiaro */
-    color: #555 !important;
-    border: 1px solid #bbb !important;
-}
-
-/* STAMPA E PDF */
 /* STAMPA E PDF */
 @media print {
   @page { size: A4 landscape; margin: 0; }
   body { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; position: static !important; height: auto !important; }
-  
-  /* ABBIAMO AGGIUNTO #mobile-view PER EVITARE L'ACCAVALLAMENTO */
   #sidebar, #staff-modal, #ics-modal, .loader, .controls, #save-status, .date-picker-container, #sidebar.mobile-open, #mobile-view { display: none !important; }
-  
   #main { display: block !important; width: 1100px !important; height: 700px !important; padding: 10px !important; margin: 0 !important; overflow: hidden !important; }
   .header-container { margin: 0 !important; height: 40px !important; flex-direction: row !important; justify-content: center !important; display: flex !important; }
   .editable-title { border-bottom: none !important; font-size: 18px !important; padding: 5px !important; margin: 0 !important; }
@@ -260,19 +185,6 @@ tr { border-bottom: 1px solid #ccc; }
 }
 
 body.print-mode #sidebar, body.print-mode #staff-modal, body.print-mode #ics-modal, body.print-mode .loader, body.print-mode .controls, body.print-mode #save-status, body.print-mode .date-picker-container, body.print-mode #mobile-view { display: none !important; }
-body.print-mode #main { display: block !important; width: 1100px !important; height: 700px !important; padding: 10px !important; margin: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
-body.print-mode .header-container { margin: 0 !important; height: 40px !important; flex-direction: row !important; justify-content: center !important; display: flex !important; }
-body.print-mode .editable-title { border-bottom: none !important; font-size: 18px !important; padding: 5px !important; margin: 0 !important; }
-body.print-mode table { display: table !important; width: 100% !important; height: 640px !important; min-width: 100% !important; margin: 0 0 10px 0 !important; table-layout: fixed !important; border-collapse: collapse !important; border-bottom: 2px solid #000 !important; }
-body.print-mode th, body.print-mode td { border: 1px solid #000 !important; }
-body.print-mode th { height: 25px !important; padding: 2px !important; font-size: 11px !important;}
-body.print-mode #grid tr { height: 118px !important; }
-body.print-mode .cell { min-height: 0 !important; height: 100% !important; border: none !important; display: flex !important; flex-wrap: wrap !important; align-content: flex-start !important; padding: 2px !important; overflow: hidden !important; gap: 1px !important; }
-body.print-mode .cell-counter { display: none !important; }
-body.print-mode .placed { width: 49% !important; font-size: 8.5pt !important; letter-spacing: -0.2px !important; border: none !important; padding: 0 !important; margin-bottom: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important; line-height: 1.2 !important; }
-
-/* Applichiamo le stesse regole anche per la modalità print-mode di html2pdf */
-body.print-mode #sidebar, body.print-mode #staff-modal, body.print-mode #ics-modal, body.print-mode .loader, body.print-mode .controls, body.print-mode #save-status, body.print-mode .date-picker-container { display: none !important; }
 body.print-mode #main { display: block !important; width: 1100px !important; height: 700px !important; padding: 10px !important; margin: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
 body.print-mode .header-container { margin: 0 !important; height: 40px !important; flex-direction: row !important; justify-content: center !important; display: flex !important; }
 body.print-mode .editable-title { border-bottom: none !important; font-size: 18px !important; padding: 5px !important; margin: 0 !important; }
