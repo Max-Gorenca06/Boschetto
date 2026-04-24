@@ -5,11 +5,30 @@ document.addEventListener('DOMContentLoaded', () => {
         dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
     });
 
-    window.addEventListener('touchmove', function(e) {
+// --- INIZIO FIX DEFINITIVO APPLE ---
+    // 1. Calcola l'altezza reale al millimetro e la passa al CSS
+    function setAppHeight() {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    window.addEventListener('resize', setAppHeight);
+    window.addEventListener('orientationchange', setAppHeight);
+    setAppHeight();
+
+    // 2. Uccide il rimbalzo elastico di iOS su tutto lo schermo
+    document.addEventListener('touchmove', function(e) {
+        // Permetti il trascinamento dei nomi (drag)
         if (e.target.closest('.placed')) {
             e.preventDefault();
+            return;
+        }
+        // Permetti lo scorrimento SOLO dentro la barra, i turni o i modali
+        const isScrollable = e.target.closest('#mobile-view, #sidebar.mobile-open, .modal-content');
+        if (!isScrollable) {
+            e.preventDefault(); // Blocca il resto della pagina come una roccia
         }
     }, { passive: false });
+    // --- FINE FIX APPLE ---
   
   const SUPABASE_URL = 'https://fwmixkwojjdgljcynycu.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bWl4a3dvampkZ2xqY3lueWN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjU1MzYsImV4cCI6MjA3NzMwMTUzNn0.Nun5QolQqtGZX61RbC8gFqL6ojA9KmoiZI7T6JtSmss';
