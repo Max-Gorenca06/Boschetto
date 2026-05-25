@@ -125,7 +125,8 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModalBtn: document.querySelector('.close-button')
   };
 
-  const giorni = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
+  const nomiGiorniBase = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
+  let giorni = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
   const turni = ["Camere", "Cucina pranzo", "Sala pranzo", "Cucina cena", "Sala cena"];
   const fasceOrarie = {
       "camere": "mattina",
@@ -800,7 +801,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 2500);
   }
 
-  async function init() {
+async function init() {
     await controllaStatoLogin(); 
 
     document.getElementById('btn-login')?.addEventListener('click', effettuaLogin);
@@ -810,8 +811,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if(spinner) spinner.style.display = 'block';
     
     await loadStaff();
+    
+    // Imposta la prima volta al Lunedì corrente per comodità
+    let oggi = new Date();
+    let giornoOggi = oggi.getDay();
+    let diffOggi = oggi.getDate() - giornoOggi + (giornoOggi === 0 ? -6 : 1);
+    let lunediCorrente = new Date(oggi.setDate(diffOggi));
+    lunediCorrente.setHours(0,0,0,0);
+    const offset = lunediCorrente.getTimezoneOffset() * 60000;
+    const targetStr = new Date(lunediCorrente - offset).toISOString().split('T')[0];
+    
+    elements.startDatePicker.value = targetStr;
+
+    // Crea l'array per l'avvio
+    giorni = [];
+    for(let i = 0; i < 7; i++) {
+        let d = new Date(lunediCorrente);
+        d.setDate(d.getDate() + i);
+        giorni.push(nomiGiorniBase[d.getDay()]);
+    }
+
     generateGrid();
     populateSidebar();
+    aggiornaDateInGriglia(lunediCorrente, true);
     await loadState();
     
     elements.tableHeaderTitle.addEventListener('blur', () => {
@@ -831,29 +853,33 @@ document.addEventListener('DOMContentLoaded', () => {
       let dataSelezionata = new Date(e.target.value);
       if (isNaN(dataSelezionata.getTime())) return;
 
-      const giornoDellaSettimana = dataSelezionata.getDay();
-      if (giornoDellaSettimana !== 1) { 
-          const differenza = dataSelezionata.getDate() - giornoDellaSettimana + (giornoDellaSettimana === 0 ? -6 : 1);
-          dataSelezionata = new Date(dataSelezionata.setDate(differenza));
-          const offset = dataSelezionata.getTimezoneOffset() * 60000;
-          e.target.value = new Date(dataSelezionata - offset).toISOString().split('T')[0];
+      // 1. LA TUA IDEA: ARRAY DINAMICO BASATO SULLA DATA SCELTA
+      giorni = [];
+      for(let i = 0; i < 7; i++) {
+          let d = new Date(dataSelezionata);
+          d.setDate(d.getDate() + i);
+          giorni.push(nomiGiorniBase[d.getDay()]);
       }
+
+      // 2. RIGENERA LO SCHELETRO DELLA GRIGLIA
+      generateGrid();
+      aggiornaDateInGriglia(dataSelezionata, true);
 
       const dataCercataStr = e.target.value;
 
-      let oggi = new Date();
-      let giornoOggi = oggi.getDay();
-      let diffOggi = oggi.getDate() - giornoOggi + (giornoOggi === 0 ? -6 : 1);
-      let lunediCorrente = new Date(oggi.setDate(diffOggi));
-      lunediCorrente.setHours(0,0,0,0);
+      document.querySelectorAll('.cell').forEach(c => { c.innerHTML = ''; updateCellCounter(c); });
+      window.assenzeSettimana = {};
+      elements.saveStatus.textContent = "Caricamento in corso...";
 
+      let oggi = new Date();
+      oggi.setHours(0,0,0,0);
       let dataSceltaObj = new Date(dataSelezionata);
       dataSceltaObj.setHours(0,0,0,0);
 
+      const isPast = dataSceltaObj < oggi;
+
       const { data: activeDraft } = await supabaseClient.from('turni_salvati').select('dati_griglia').eq('id', 1).single();
       const dataBozzaAttiva = activeDraft?.dati_griglia?.["_metadata_start_date"];
-
-      const isPast = dataSceltaObj < lunediCorrente;
 
       if (dataCercataStr === dataBozzaAttiva) {
           window.isHistoricalMode = false;
@@ -861,9 +887,6 @@ document.addEventListener('DOMContentLoaded', () => {
           await loadState(); 
           showToast("Bozza attiva caricata 📝");
       } else {
-          document.querySelectorAll('.cell').forEach(c => { c.innerHTML = ''; updateCellCounter(c); });
-          window.assenzeSettimana = {};
-          
           const { data: archive } = await supabaseClient.from('storico_turni').select('dati_griglia').eq('id', dataCercataStr).single();
 
           if (archive && archive.dati_griglia) {
@@ -890,35 +913,28 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       }
       
-      aggiornaDateInGriglia(dataSelezionata, true);
       if (typeof updateMobileHeader === 'function') updateMobileHeader();
   });
 
-  document.getElementById('clone-week-btn')?.addEventListener('click', async () => {
+document.getElementById('clone-week-btn')?.addEventListener('click', async () => {
       if(confirm("Vuoi trasportare questa griglia per usarla come base dei nuovi turni?")) {
-          
           window.isHistoricalMode = false; 
           document.getElementById('historical-banner').style.display = 'none';
           
-          let oggi = new Date();
-          let giorno = oggi.getDay();
+          // Prende la data attualmente visualizzata e aggiunge esattamente 7 giorni
+          let dataAttuale = new Date(elements.startDatePicker.value);
+          dataAttuale.setDate(dataAttuale.getDate() + 7);
           
-          let diff = oggi.getDate() - giorno + (giorno === 0 ? -6 : 1);
-          if (giorno === 6 || giorno === 0) { diff += 7; }
-          
-          let lunediTarget = new Date(oggi.setDate(diff));
-          lunediTarget.setHours(0,0,0,0);
-          
-          const offset = lunediTarget.getTimezoneOffset() * 60000;
-          const targetStr = new Date(lunediTarget - offset).toISOString().split('T')[0];
+          const offset = dataAttuale.getTimezoneOffset() * 60000;
+          const targetStr = new Date(dataAttuale - offset).toISOString().split('T')[0];
           
           elements.startDatePicker.value = targetStr;
-          aggiornaDateInGriglia(lunediTarget, true);
+          
+          // Scatena l'evento "change" per far fare tutto il lavoro al blocco che abbiamo scritto sopra!
+          elements.startDatePicker.dispatchEvent(new Event('change'));
+          
           await saveState();
-          document.querySelectorAll('.cell').forEach(c => { c.innerHTML = ''; updateCellCounter(c); });
-          await loadState();
-
-          showToast(giorno === 6 || giorno === 0 ? "Clonata per la PROSSIMA settimana! ✨" : "Settimana clonata con successo! ✨");
+          showToast("Settimana clonata con successo! ✨");
       }
   });
 
