@@ -873,10 +873,16 @@ async function init() {
 
       let oggi = new Date();
       oggi.setHours(0,0,0,0);
+
       let dataSceltaObj = new Date(dataSelezionata);
       dataSceltaObj.setHours(0,0,0,0);
 
-      const isPast = dataSceltaObj < oggi;
+      // Calcola l'ultimo giorno visibile sulla griglia
+      let dataFineObj = new Date(dataSceltaObj);
+      dataFineObj.setDate(dataSceltaObj.getDate() + 6);
+
+      // È in "Sola Lettura" SOLO SE oggi ha superato l'ultimo giorno della griglia
+      const isPast = oggi > dataFineObj;
 
       const { data: activeDraft } = await supabaseClient.from('turni_salvati').select('dati_griglia').eq('id', 1).single();
       const dataBozzaAttiva = activeDraft?.dati_griglia?.["_metadata_start_date"];
