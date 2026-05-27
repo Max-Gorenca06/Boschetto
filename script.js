@@ -847,13 +847,63 @@ async function init() {
   }
 
   // --- MACCHINA DEL TEMPO E CLONAZIONE ---
+ // --- MACCHINA DEL TEMPO E CLONAZIONE ---
   elements.startDatePicker.addEventListener('change', async (e) => {
       if (!isLoggedIn) return e.preventDefault(); 
       
-      let dataSelezionata = new Date(e.target.value);
+      const dataCercataStr = e.target.value;
+      let dataSelezionata = new Date(dataCercataStr);
       if (isNaN(dataSelezionata.getTime())) return;
 
-      // 1. LA TUA IDEA: ARRAY DINAMICO BASATO SULLA DATA SCELTA
+      elements.saveStatus.textContent = "Verifica sovrapposizioni...";
+
+      // =================================================================
+      // INTERCETTAZIONE EFFETTO CALAMITA (SAAS / MULTI-WEEK FLEX)
+      // =================================================================
+      
+      // 1. Controllo preliminare sulla BOZZA ATTIVA (id: 1)
+      const { data: activeDraft } = await supabaseClient.from('turni_salvati').select('dati_griglia').eq('id', 1).single();
+      let dataBozzaAttiva = activeDraft?.dati_griglia?.["_metadata_start_date"];
+      
+      if (dataBozzaAttiva && dataCercataStr !== dataBozzaAttiva) {
+          let startBozza = new Date(dataBozzaAttiva);
+          let fineBozza = new Date(startBozza);
+          fineBozza.setDate(startBozza.getDate() + 6);
+          
+          // Se il giorno scelto è dentro la bozza attiva, attira il calendario all'inizio della bozza
+          if (dataSelezionata >= startBozza && dataSelezionata <= fineBozza) {
+              e.target.value = dataBozzaAttiva;
+              elements.startDatePicker.dispatchEvent(new Event('change'));
+              showToast("Allineato alla bozza attiva corrente 📝");
+              return;
+          }
+      }
+
+      // 2. Controllo sullo STORICO delle settimane pubblicate
+      const { data: records } = await supabaseClient
+          .from('storico_turni')
+          .select('id')
+          .lte('id', dataCercataStr)
+          .order('id', { ascending: false })
+          .limit(1);
+
+      if (records && records.length > 0 && dataCercataStr !== records[0].id) {
+          const possibileInizioStr = records[0].id;
+          let startArchivio = new Date(possibileInizioStr);
+          let fineArchivio = new Date(startArchivio);
+          fineArchivio.setDate(startArchivio.getDate() + 6);
+
+          // Se il giorno scelto cade dentro questo blocco d'archivio, attira il calendario lì
+          if (dataSelezionata >= startArchivio && dataSelezionata <= fineArchivio) {
+              e.target.value = possibileInizioStr;
+              elements.startDatePicker.dispatchEvent(new Event('change'));
+              showToast("Allineato a blocco esistente in archivio 🕰️");
+              return;
+          }
+      }
+      // =================================================================
+
+      // Se non trova sovrapposizioni, procede normalmente creando l'array dinamico da questo giorno
       giorni = [];
       for(let i = 0; i < 7; i++) {
           let d = new Date(dataSelezionata);
@@ -861,11 +911,8 @@ async function init() {
           giorni.push(nomiGiorniBase[d.getDay()]);
       }
 
-      // 2. RIGENERA LO SCHELETRO DELLA GRIGLIA
       generateGrid();
       aggiornaDateInGriglia(dataSelezionata, true);
-
-      const dataCercataStr = e.target.value;
 
       document.querySelectorAll('.cell').forEach(c => { c.innerHTML = ''; updateCellCounter(c); });
       window.assenzeSettimana = {};
@@ -873,19 +920,13 @@ async function init() {
 
       let oggi = new Date();
       oggi.setHours(0,0,0,0);
-
       let dataSceltaObj = new Date(dataSelezionata);
       dataSceltaObj.setHours(0,0,0,0);
 
-      // Calcola l'ultimo giorno visibile sulla griglia
       let dataFineObj = new Date(dataSceltaObj);
       dataFineObj.setDate(dataSceltaObj.getDate() + 6);
-
-      // È in "Sola Lettura" SOLO SE oggi ha superato l'ultimo giorno della griglia
+      
       const isPast = oggi > dataFineObj;
-
-      const { data: activeDraft } = await supabaseClient.from('turni_salvati').select('dati_griglia').eq('id', 1).single();
-      const dataBozzaAttiva = activeDraft?.dati_griglia?.["_metadata_start_date"];
 
       if (dataCercataStr === dataBozzaAttiva) {
           window.isHistoricalMode = false;
@@ -921,6 +962,8 @@ async function init() {
       
       if (typeof updateMobileHeader === 'function') updateMobileHeader();
   });
+  
+  
 
 document.getElementById('clone-week-btn')?.addEventListener('click', async () => {
       if(confirm("Vuoi trasportare questa griglia per usarla come base dei nuovi turni?")) {
