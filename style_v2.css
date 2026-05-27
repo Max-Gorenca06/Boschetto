@@ -203,7 +203,7 @@ tr { border-bottom: 1px solid #ccc; }
   th { height: 25px !important; padding: 2px !important; font-size: 11px !important; }
   #grid tr { height: 118px !important; }
   .cell { min-height: 0 !important; height: 100% !important; border: none !important; display: flex !important; flex-wrap: wrap !important; align-content: flex-start !important; padding: 2px !important; overflow: hidden !important; gap: 1px !important; }
-  .cell-counter { display: none !important; }
+  .cell-counter { display: block !important; color: #000 !important; font-weight: bold !important; }
   .placed { width: 49% !important; font-size: 8.5pt !important; letter-spacing: -0.2px !important; border: none !important; padding: 0 !important; margin-bottom: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important; line-height: 1.2 !important; }
 }
 
@@ -216,7 +216,7 @@ body.print-mode th, body.print-mode td { border: 1px solid #000 !important; }
 body.print-mode th { height: 25px !important; padding: 2px !important; font-size: 11px !important;}
 body.print-mode #grid tr { height: 118px !important; }
 body.print-mode .cell { min-height: 0 !important; height: 100% !important; border: none !important; display: flex !important; flex-wrap: wrap !important; align-content: flex-start !important; padding: 2px !important; overflow: hidden !important; gap: 1px !important; }
-body.print-mode .cell-counter { display: none !important; }
+body.print-mode .cell-counter { display: block !important; color: #000 !important; font-weight: bold !important; }
 body.print-mode .placed { width: 49% !important; font-size: 8.5pt !important; letter-spacing: -0.2px !important; border: none !important; padding: 0 !important; margin-bottom: 0 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important; line-height: 1.2 !important; }
 
 .toast { visibility: hidden; min-width: 200px; background-color: #323232; color: #fff; text-align: center; border-radius: 8px; padding: 12px 20px; position: fixed; z-index: 9999; left: 50%; bottom: 20px; transform: translateX(-50%); font-size: 14px; font-weight: 500; box-shadow: 0px 4px 10px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; pointer-events: none; }
