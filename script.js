@@ -200,10 +200,21 @@ document.addEventListener('DOMContentLoaded', () => {
       if (datiDaCaricare["_metadata_title"]) {
         elements.tableHeaderTitle.value = datiDaCaricare["_metadata_title"];
       }
-      if (datiDaCaricare["_metadata_start_date"]) {
+    if (datiDaCaricare["_metadata_start_date"]) {
         elements.startDatePicker.value = datiDaCaricare["_metadata_start_date"];
         const startObj = new Date(datiDaCaricare["_metadata_start_date"]);
-        if (!isNaN(startObj.getTime())) aggiornaDateInGriglia(startObj, false); 
+        
+        if (!isNaN(startObj.getTime())) {
+            // Svuota e ricalcola i veri nomi dei giorni prima di stamparli
+            giorni = [];
+            for(let i = 0; i < 7; i++) {
+                let d = new Date(startObj);
+                d.setDate(d.getDate() + i);
+                giorni.push(nomiGiorniBase[d.getDay()]);
+            }
+            
+            aggiornaDateInGriglia(startObj, false); 
+        }
       }
       
       window.assenzeSettimana = datiDaCaricare["_metadata_assenze"] || {};
