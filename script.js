@@ -857,7 +857,7 @@ async function init() {
 
       elements.saveStatus.textContent = "Verifica sovrapposizioni...";
 
-      // =================================================================
+// =================================================================
       // INTERCETTAZIONE EFFETTO CALAMITA (SAAS / MULTI-WEEK FLEX)
       // =================================================================
       
@@ -870,12 +870,14 @@ async function init() {
           let fineBozza = new Date(startBozza);
           fineBozza.setDate(startBozza.getDate() + 6);
           
-          // Se il giorno scelto è dentro la bozza attiva, attira il calendario all'inizio della bozza
+          // Se il giorno scelto è dentro la bozza attiva, chiedi conferma prima di spostare
           if (dataSelezionata >= startBozza && dataSelezionata <= fineBozza) {
-              e.target.value = dataBozzaAttiva;
-              elements.startDatePicker.dispatchEvent(new Event('change'));
-              showToast("Allineato alla bozza attiva corrente 📝");
-              return;
+              if (confirm(`⚠️ ATTENZIONE\nQuesta data è già compresa nella bozza in corso (iniziata il ${dataBozzaAttiva}).\n\nVuoi allinearti a quella bozza per continuare a modificarla?\n\n(Premi "Annulla" per ignorare e creare una griglia da zero)`)) {
+                  e.target.value = dataBozzaAttiva;
+                  elements.startDatePicker.dispatchEvent(new Event('change'));
+                  showToast("Allineato alla bozza attiva corrente 📝");
+                  return;
+              }
           }
       }
 
@@ -893,12 +895,14 @@ async function init() {
           let fineArchivio = new Date(startArchivio);
           fineArchivio.setDate(startArchivio.getDate() + 6);
 
-          // Se il giorno scelto cade dentro questo blocco d'archivio, attira il calendario lì
+          // Se il giorno scelto cade dentro un archivio, chiedi conferma prima di spostare
           if (dataSelezionata >= startArchivio && dataSelezionata <= fineArchivio) {
-              e.target.value = possibileInizioStr;
-              elements.startDatePicker.dispatchEvent(new Event('change'));
-              showToast("Allineato a blocco esistente in archivio 🕰️");
-              return;
+              if (confirm(`⚠️ ARCHIVIO TROVATO\nQuesta data fa parte di una settimana già archiviata (iniziata il ${possibileInizioStr}).\n\nVuoi visualizzare quel documento storico?\n\n(Premi "Annulla" per ignorare e creare una griglia da zero)`)) {
+                  e.target.value = possibileInizioStr;
+                  elements.startDatePicker.dispatchEvent(new Event('change'));
+                  showToast("Allineato a blocco esistente in archivio 🕰️");
+                  return;
+              }
           }
       }
       // =================================================================
