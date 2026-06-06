@@ -1,4 +1,4 @@
-const CACHE_NAME = 'turni-boschetto-v12';
+const CACHE_NAME = 'turni-boschetto-v13';
 const urlsToCache = [
   './',
   './index.html',
