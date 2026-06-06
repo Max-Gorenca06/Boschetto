@@ -25,7 +25,19 @@
 <body>
   
   <div id="loading-spinner" class="loader" style="display: none;"></div>
+  <div id="notification-bell" style="display: none; position: fixed; top: 15px; right: 20px; z-index: 1000; cursor: pointer; font-size: 26px; background: white; border-radius: 50%; width: 40px; height: 40px; text-align: center; line-height: 40px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+    🔔
+    <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 12px; font-weight: bold;">0</span>
+</div>
 
+<div id="approvals-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-button" id="close-approvals-modal">&times;</span>
+        <h2 style="color: #e91e63; margin-top: 0;">Richieste in Sospeso</h2>
+        <p style="font-size: 13px; color: #666;">Approva o rifiuta le richieste inviate dallo staff.</p>
+        <ul id="approvals-list" style="list-style: none; padding: 0; font-size: 14px;"></ul>
+    </div>
+</div>
   <div id="sidebar">
     <button id="mobile-close-sidebar" style="display: none; float: right; background: none; border: none; font-size: 28px; cursor: pointer; color: #333; margin-bottom: 10px;">&times;</button>
     <div style="clear: both;"></div>
@@ -133,9 +145,10 @@
       
       <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
         <select id="abs-name" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;"></select>
-        <select id="abs-day" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;"></select>
+        <input type="date" id="abs-data-inizio" title="Data Inizio" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;">
+        <input type="date" id="abs-data-fine" title="Data Fine" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;">
         <select id="abs-shift" style="padding: 8px; flex: 1; border-radius: 4px; border: 1px solid #ccc;">
-           <option value="tutto_il_giorno">Tutto il giorno</option>
+           <option value="TUTTI">Tutto il giorno</option>
            <option value="camere">Camere</option>
            <option value="cucina_pranzo">Cucina Pranzo</option>
            <option value="sala_pranzo">Sala Pranzo</option>

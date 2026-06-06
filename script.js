@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let isLoggedIn = false;
   let isOffline = false;
   window.isHistoricalMode = false;
+  window.assenzeGlobali = [];
   window.assenzeSettimana = {}; 
 
   // --- FUNZIONE CERVELLO: RACCOGLIE TUTTI I DATI DELLA GRIGLIA ---
@@ -163,7 +164,54 @@ document.addEventListener('DOMContentLoaded', () => {
         isOffline = false;
     }
   }
+  async function caricaAssenzeGlobali() {
+        if (!isLoggedIn) return;
+        const { data, error } = await supabaseClient
+            .from('assenze_globali')
+            .select('*')
+            .eq('stato', 'APPROVATA');
+        
+        if (!error && data) {
+            window.assenzeGlobali = data;
+        } else {
+            console.error("Errore caricamento assenze globali", error);
+        }
+    }
+    function isDipendenteAssente(nome, cellId) {
+        const parti = cellId.split('-'); 
+        const nomeGiornoGriglia = parti[0]; // es. "venerdì"
+        const turnoGriglia = parti[1]; // es. "cucina_pranzo"
+        
+        const dataInizioGriglia = new Date(elements.startDatePicker.value);
+        if(isNaN(dataInizioGriglia.getTime())) return false;
+        
+        const offsetGiorno = giorni.map(g => g.toLowerCase()).indexOf(nomeGiornoGriglia);
+        if(offsetGiorno === -1) return false;
+        
+        let dataCella = new Date(dataInizioGriglia);
+        dataCella.setDate(dataCella.getDate() + offsetGiorno);
+        dataCella.setHours(0,0,0,0);
 
+        for (const assenza of window.assenzeGlobali) {
+            if (assenza.nome_dipendente.toLowerCase() === nome.toLowerCase()) {
+                let inizioAssenza = new Date(assenza.data_inizio);
+                inizioAssenza.setHours(0,0,0,0);
+                let fineAssenza = new Date(assenza.data_fine);
+                fineAssenza.setHours(0,0,0,0);
+
+                if (dataCella >= inizioAssenza && dataCella <= fineAssenza) {
+                    if (assenza.turno_specifico === 'TUTTI') return true;
+                    
+                    const fascia = fasceOrarie[turnoGriglia]; 
+                    if (assenza.turno_specifico.toLowerCase() === fascia.toLowerCase() || 
+                        assenza.turno_specifico.toLowerCase() === turnoGriglia.toLowerCase()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
   async function loadState() {
     const databaseId = isLoggedIn ? 1 : 2;
 
@@ -442,13 +490,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const turno = parts[1];  
     const fasciaSelezionata = fasceOrarie[turno]; 
 
-    if (window.assenzeSettimana && window.assenzeSettimana[name]) {
-        if (window.assenzeSettimana[name].includes(`${giorno}-tutto_il_giorno`) || 
-            window.assenzeSettimana[name].includes(`${giorno}-${turno}`)) {
-            
-            const conferma = confirm(`⚠️ RICHIESTA/ASSENZA REGISTRATA:\n\n${name} ha un blocco impostato per questo giorno/turno.\n\nVuoi forzare l'inserimento nel turno lo stesso?`);
-            if (!conferma) return; 
-        }
+    if (isDipendenteAssente(name, cellDiv.dataset.cellId)) {
+        const procedi = confirm(`⚠️ ATTENZIONE ASSENZA:\n\n"${name}" ha un'assenza registrata in questa data/turno.\n\nVuoi forzare l'inserimento nella griglia lo stesso?`);
+        if (!procedi) return; // Se il capo preme "Annulla", il codice si ferma qui. Se preme "Ok", va avanti e lo inserisce.
     }
 
     let conflittoTrovato = false;
@@ -820,9 +864,9 @@ async function init() {
 
     const spinner = document.getElementById('loading-spinner');
     if(spinner) spinner.style.display = 'block';
-    
+    await controllaNotifiche();
     await loadStaff();
-    
+    await caricaAssenzeGlobali();
     // Imposta la prima volta al Lunedì corrente per comodità
     let oggi = new Date();
     let giornoOggi = oggi.getDay();
@@ -846,6 +890,7 @@ async function init() {
     populateSidebar();
     aggiornaDateInGriglia(lunediCorrente, true);
     await loadState();
+    
     
     elements.tableHeaderTitle.addEventListener('blur', () => {
         if(isLoggedIn) saveState(); 
@@ -1313,31 +1358,39 @@ document.getElementById('export-ics-btn')?.addEventListener('click', () => {
 
   function popolaTendinaAssenze() {
       const selectName = document.getElementById('abs-name');
-      const selectDay = document.getElementById('abs-day');
       
-      if(!selectName || !selectDay) return;
+      if(!selectName) return;
 
+      // Svuota e riempie solo la tendina dei nomi (i giorni ora si scelgono coi calendari HTML)
       selectName.innerHTML = '<option value="" disabled selected>Persona...</option>';
       staff.forEach(p => selectName.innerHTML += `<option value="${p.name}">${p.name}</option>`);
-
-      selectDay.innerHTML = '<option value="" disabled selected>Giorno...</option>';
-      giorni.forEach(g => selectDay.innerHTML += `<option value="${g.toLowerCase()}">${g}</option>`);
   }
 
-  document.getElementById('add-abs-btn')?.addEventListener('click', () => {
+ document.getElementById('add-abs-btn')?.addEventListener('click', async () => {
       const nome = document.getElementById('abs-name').value;
-      const giorno = document.getElementById('abs-day').value;
-      const turno = document.getElementById('abs-shift').value;
+      const dataInizio = document.getElementById('abs-data-inizio').value; // INPUT DATE DA AGGIUNGERE IN HTML
+      const dataFine = document.getElementById('abs-data-fine').value;     // INPUT DATE DA AGGIUNGERE IN HTML
+      const turno = document.getElementById('abs-shift').value; 
 
-      if (!nome || !giorno || !turno) return alert("Compila tutti i menu a tendina.");
-      if (!window.assenzeSettimana[nome]) window.assenzeSettimana[nome] = [];
+      if (!nome || !dataInizio || !dataFine || !turno) return alert("Compila tutti i campi richiesti.");
       
-      const blocco = `${giorno}-${turno}`;
-      if (!window.assenzeSettimana[nome].includes(blocco)) {
-          window.assenzeSettimana[nome].push(blocco);
-          saveState(); 
-          aggiornaListaAssenze();
-          showToast(`Nota impostata per ${nome}`);
+      showToast("Salvataggio nel database globale...");
+      
+      const { error } = await supabaseClient.from('assenze_globali').insert([{
+          nome_dipendente: nome,
+          data_inizio: dataInizio,
+          data_fine: dataFine,
+          turno_specifico: turno,
+          stato: 'APPROVATA'
+      }]);
+
+      if (error) {
+          alert("Errore durante il salvataggio dell'assenza.");
+          console.error(error);
+      } else {
+          showToast(`Assenza globale impostata per ${nome}`);
+          await caricaAssenzeGlobali(); // Aggiorna subito la memoria
+          aggiornaListaAssenze(); // Aggiorna la grafica (se hai mantenuto la funzione)
       }
   });
 
@@ -1345,27 +1398,164 @@ document.getElementById('export-ics-btn')?.addEventListener('click', () => {
       const ul = document.getElementById('absences-list');
       if(!ul) return;
       ul.innerHTML = '';
-      Object.keys(window.assenzeSettimana).forEach(nome => {
-          window.assenzeSettimana[nome].forEach(blocco => {
-              const [giorno, turno] = blocco.split('-');
-              const li = document.createElement('li');
-              li.style.cssText = "display: flex; justify-content: space-between; padding: 6px; border-bottom: 1px solid #eee;";
-              li.innerHTML = `<span><b>${nome}</b>: ${giorno.toUpperCase()} (${turno.replace(/_/g, ' ').toUpperCase()})</span>`;
-              
-              const delBtn = document.createElement('button');
-              delBtn.textContent = '❌';
-              delBtn.style.cssText = "background:none; border:none; color:red; cursor:pointer;";
-              delBtn.onclick = () => {
-                  window.assenzeSettimana[nome] = window.assenzeSettimana[nome].filter(b => b !== blocco);
-                  if(window.assenzeSettimana[nome].length === 0) delete window.assenzeSettimana[nome];
-                  saveState();
-                  aggiornaListaAssenze();
-              };
-              li.appendChild(delBtn);
-              ul.appendChild(li);
-          });
+
+      // Legge dalla nuova memoria globale che abbiamo scaricato dal server
+      if (!window.assenzeGlobali || window.assenzeGlobali.length === 0) {
+          ul.innerHTML = '<li style="color:#999; font-style:italic;">Nessuna richiesta o assenza salvata.</li>';
+          return;
+      }
+
+      window.assenzeGlobali.forEach(assenza => {
+          const li = document.createElement('li');
+          li.style.cssText = "display: flex; justify-content: space-between; padding: 6px; border-bottom: 1px solid #eee; font-size: 13px;";
+          
+          let dateStr = "";
+          // Formatta le date in modo carino
+          if (assenza.data_inizio === assenza.data_fine) {
+              dateStr = assenza.data_inizio.split('-').reverse().join('/');
+          } else {
+              dateStr = `dal ${assenza.data_inizio.split('-').reverse().join('/')} al ${assenza.data_fine.split('-').reverse().join('/')}`;
+          }
+
+            let testoMotivo = assenza.motivo ? `<br><span style="font-size: 11px; color: #888;">📝 ${assenza.motivo}</span>` : '';
+            li.innerHTML = `<span><b>${assenza.nome_dipendente}</b>: ${dateStr} (${assenza.turno_specifico.replace(/_/g, ' ').toUpperCase()})${testoMotivo}</span>`;          
+          // Bottone per eliminare l'assenza dal Database
+          const delBtn = document.createElement('button');
+          delBtn.textContent = '❌';
+          delBtn.style.cssText = "background:none; border:none; color:red; cursor:pointer; font-size: 16px;";
+          delBtn.onclick = async () => {
+              if (confirm(`Eliminare l'assenza di ${assenza.nome_dipendente}?`)) {
+                  showToast("Cancellazione in corso...");
+                  await supabaseClient.from('assenze_globali').delete().eq('id', assenza.id);
+                  await caricaAssenzeGlobali(); // Riscarica i dati freschi
+                  aggiornaListaAssenze(); // Aggiorna lo schermo
+              }
+          };
+          li.appendChild(delBtn);
+          ul.appendChild(li);
       });
   }
+// =========================================
+// LOGICA NOTIFICHE E APPROVAZIONI
+// =========================================
+const approvalsModal = document.getElementById('approvals-modal');
+const notificationBadge = document.getElementById('notification-badge');
+const notificationBell = document.getElementById('notification-bell');
+
+if (notificationBell) {
+    notificationBell.addEventListener('click', () => {
+        popolaModaleApprovazioni();
+        approvalsModal.classList.add('show');
+    });
+}
+
+if (document.getElementById('close-approvals-modal')) {
+    document.getElementById('close-approvals-modal').addEventListener('click', () => {
+        approvalsModal.classList.remove('show');
+    });
+}
+
+// Questa funzione fa da radar e accende il pallino rosso
+async function controllaNotifiche() {
+    if (!isLoggedIn) {
+        if (notificationBell) notificationBell.style.display = 'none';
+        return;
+    }
+    
+    if (notificationBell) notificationBell.style.display = 'block';
+
+    const { data, error } = await supabaseClient
+        .from('assenze_globali')
+        .select('id')
+        .eq('stato', 'IN ATTESA');
+    
+    if (!error && data) {
+        if (data.length > 0) {
+            notificationBadge.style.display = 'block';
+            notificationBadge.textContent = data.length;
+        } else {
+            notificationBadge.style.display = 'none';
+        }
+    }
+}
+
+// Questa funzione crea la lista con i bottoni Approva/Rifiuta
+async function popolaModaleApprovazioni() {
+    const ul = document.getElementById('approvals-list');
+    if (!ul) return;
+    ul.innerHTML = '<li>Caricamento richieste...</li>';
+    
+    const { data, error } = await supabaseClient
+        .from('assenze_globali')
+        .select('*')
+        .eq('stato', 'IN ATTESA')
+        .order('created_at', { ascending: false });
+        
+    ul.innerHTML = '';
+    
+    if (error || !data || data.length === 0) {
+        ul.innerHTML = '<li style="color:#999; font-style:italic;">Nessuna richiesta in sospeso.</li>';
+        return;
+    }
+
+    data.forEach(req => {
+        const li = document.createElement('li');
+        li.style.cssText = "padding: 12px; border-bottom: 1px solid #eee; margin-bottom: 10px; background: #f9f9f9; border-radius: 8px;";
+        
+        // Costruisce la stringa della data in formato italiano
+        let dateStr = req.data_inizio === req.data_fine 
+            ? req.data_inizio.split('-').reverse().join('/')
+            : `dal ${req.data_inizio.split('-').reverse().join('/')} al ${req.data_fine.split('-').reverse().join('/')}`;
+        
+        let htmlInfo = `
+            <div style="margin-bottom: 12px;">
+                <strong style="font-size: 16px;">${req.nome_dipendente}</strong><br>
+                <span style="color: #e91e63; font-weight: bold;">${dateStr} (${req.turno_specifico.replace(/_/g, ' ').toUpperCase()})</span>
+                ${req.motivo ? `<br><span style="font-size: 13px; color: #555;">📝 Motivo: ${req.motivo}</span>` : ''}
+            </div>
+        `;
+        li.innerHTML = htmlInfo;
+        
+        const divBtns = document.createElement('div');
+        divBtns.style.display = 'flex';
+        divBtns.style.gap = '10px';
+
+        // Bottone Verde: APPROVA
+        const btnApprove = document.createElement('button');
+        btnApprove.textContent = '✅ Approva';
+        btnApprove.className = 'btn';
+        btnApprove.style.cssText = "background: #28a745; flex: 1; padding: 8px; font-size: 14px;";
+        btnApprove.onclick = async () => {
+            btnApprove.disabled = true;
+            btnReject.disabled = true;
+            await supabaseClient.from('assenze_globali').update({ stato: 'APPROVATA' }).eq('id', req.id);
+            await caricaAssenzeGlobali(); // Aggiorna la memoria dei blocchi per la griglia
+            controllaNotifiche(); // Aggiorna il pallino rosso
+            popolaModaleApprovazioni(); // Togle la richiesta dalla campanella
+            if (typeof aggiornaListaAssenze === 'function') aggiornaListaAssenze(); // LA TUA AGGIUNTA: la fa comparire nel pannello rosa
+        };
+        
+        // Bottone Rosso: RIFIUTA
+        const btnReject = document.createElement('button');
+        btnReject.textContent = '❌ Rifiuta';
+        btnReject.className = 'btn secondary';
+        btnReject.style.cssText = "color: #dc3545; border: 1px solid #dc3545; flex: 1; padding: 8px; font-size: 14px;";
+        btnReject.onclick = async () => {
+            if(confirm(`Sei sicuro di rifiutare la richiesta di ${req.nome_dipendente}? Verrà cancellata.`)) {
+                btnApprove.disabled = true;
+                btnReject.disabled = true;
+                await supabaseClient.from('assenze_globali').delete().eq('id', req.id);
+                controllaNotifiche(); // Aggiorna il pallino rosso
+                popolaModaleApprovazioni(); // Togle la richiesta dalla campanella
+            }
+        };
+        
+        divBtns.appendChild(btnApprove);
+        divBtns.appendChild(btnReject);
+        li.appendChild(divBtns);
+        ul.appendChild(li);
+    });
+}
   // =========================================
   // REGISTRAZIONE SERVICE WORKER (PWA)
   // =========================================
