@@ -865,6 +865,7 @@ async function init() {
     const spinner = document.getElementById('loading-spinner');
     if(spinner) spinner.style.display = 'block';
     await controllaNotifiche();
+    attivaAscoltoRealtime();
     await loadStaff();
     await caricaAssenzeGlobali();
     // Imposta la prima volta al Lunedì corrente per comodità
@@ -1555,6 +1556,34 @@ async function popolaModaleApprovazioni() {
         li.appendChild(divBtns);
         ul.appendChild(li);
     });
+}
+// =========================================
+// ASCOLTATORE REALTIME (WEBSOCKET)
+// =========================================
+function attivaAscoltoRealtime() {
+    // Non sprechiamo connessioni se non siamo loggati come Admin
+    if (!isLoggedIn) return; 
+
+    // Apriamo un canale radio con Supabase
+    supabaseClient
+        .channel('canale-assenze')
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'assenze_globali' },
+            (payload) => {
+                // Questo scatta in tempo reale appena il dipendente preme "Invia"
+                // o quando il tuo capo preme "Approva/Rifiuta"
+                
+                controllaNotifiche(); // 1. Aggiorna sùbito il pallino rosso
+                
+                // 2. Se il capo ha la tendina aperta in quel momento, la ricarica in diretta
+                const approvalsModal = document.getElementById('approvals-modal');
+                if (approvalsModal && approvalsModal.classList.contains('show')) {
+                    popolaModaleApprovazioni();
+                }
+            }
+        )
+        .subscribe();
 }
   // =========================================
   // REGISTRAZIONE SERVICE WORKER (PWA)
