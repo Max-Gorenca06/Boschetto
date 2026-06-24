@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     addNewStaffBtn: document.getElementById('add-new-staff-btn'),
     cancelEditBtn: document.getElementById('cancel-edit'),
     startDatePicker: document.getElementById('start-date-picker'),
-    closeModalBtn: document.querySelector('.close-button')
+    closeModalBtn: document.querySelector('#staff-modal .close-button')
   };
 
   const nomiGiorniBase = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
@@ -164,17 +164,30 @@ document.addEventListener('DOMContentLoaded', () => {
         isOffline = false;
     }
   }
-  async function caricaAssenzeGlobali() {
+ async function caricaAssenzeGlobali() {
         if (!isLoggedIn) return;
         const { data, error } = await supabaseClient
             .from('assenze_globali')
             .select('*')
             .eq('stato', 'APPROVATA');
         
-        if (!error && data) {
-            window.assenzeGlobali = data;
+        if (error) {
+            console.error("Errore di rete durante il caricamento assenze globali:", error);
+            const localAssenzeRaw = localStorage.getItem('assenze_backup');
+            if (localAssenzeRaw) {
+                try {
+                    window.assenzeGlobali = JSON.parse(localAssenzeRaw);
+                    showToast("Assenze caricate offline (Sola lettura) ⚠️");
+                } catch (e) {
+                    window.assenzeGlobali = [];
+                }
+            } else {
+                window.assenzeGlobali = [];
+            }
         } else {
-            console.error("Errore caricamento assenze globali", error);
+            window.assenzeGlobali = data || [];
+            // Salva silenziosamente il backup aggiornato nel cassetto del telefono
+            localStorage.setItem('assenze_backup', JSON.stringify(window.assenzeGlobali));
         }
     }
     function isDipendenteAssente(nome, cellId) {
@@ -518,6 +531,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cellDiv.appendChild(createPlacedElement({ name }));
     updateCellCounter(cellDiv);
+
+    // ==========================================
+    // AUTOMAZIONE CAMERE
+    // ==========================================
+    const datiStaff = staff.find(s => s.name.toLowerCase() === name.toLowerCase());
+    
+    // Se la persona ha il superpotere attivato E il turno è un pranzo
+    if (datiStaff && datiStaff.fa_camere) {
+        if (turno === 'cucina_pranzo' || turno === 'sala_pranzo') {
+            
+            // Cerca la cella delle camere per lo stesso giorno
+            const idCellaCamere = `${giorno}-camere`;
+            const cellaCamere = document.querySelector(`.cell[data-cell-id="${idCellaCamere}"]`);
+            
+            if (cellaCamere) {
+                // Controlla che non sia già dentro per evitare doppioni grafici
+                const giaPresente = Array.from(cellaCamere.querySelectorAll('.placed')).some(c => c.dataset.name === name);
+                
+                if (!giaPresente) {
+                    cellaCamere.appendChild(createPlacedElement({ name }));
+                    updateCellCounter(cellaCamere);
+                    showToast(`${name} aggiunto in automatico anche alle camere 🛏️`);
+                }
+            }
+        }
+    }
+    // ==========================================
     updateAllSidebarCounts();
     saveState();
     
@@ -695,11 +735,13 @@ document.addEventListener('DOMContentLoaded', () => {
   elements.closeModalBtn.addEventListener('click', () => elements.staffModal.classList.remove('show'));
   
   // Mini-funzione per creare la riga di ogni dipendente senza ripetere il codice
-  function createStaffListItem(p) {
+function createStaffListItem(p) {
       const isFissoStr = p.is_fisso ? '<span style="background: #e0e0e0; color: #555; padding: 2px 5px; border-radius: 3px; font-size: 10px;">Fisso</span>' : '';
+      const faCamereStr = p.fa_camere ? '<span style="background: #e1f5fe; color: #0277bd; padding: 2px 5px; border-radius: 3px; font-size: 10px; margin-left: 5px;">+ Camere</span>' : '';
+      
       const li = document.createElement('li');
       li.innerHTML = `
-          <span style="display: flex; align-items: center; gap: 5px;">${p.name} <small>(${p.group})</small> ${isFissoStr}</span> 
+          <span style="display: flex; align-items: center; gap: 5px;">${p.name} <small>(${p.group})</small> ${isFissoStr} ${faCamereStr}</span> 
           <div>
               <button class="btn secondary btn-edit" style="padding: 2px 8px; font-size: 11px;">Modifica</button>
               <button class="btn secondary btn-del" style="padding: 2px 8px; font-size: 11px; color:red; border-color:red;">X</button>
@@ -715,6 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
           document.getElementById('staff-max-shifts').value = p.maxShifts;
           document.getElementById('original-name').value = p.id; 
           document.getElementById('staff-fisso').checked = p.is_fisso || false;
+          document.getElementById('staff-fa-camere').checked = p.fa_camere || false; // RIGA NUOVA
       });
 
       // Logica tasto Elimina
@@ -786,7 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.addNewStaffBtn.style.display = 'block';
   });
   
-  elements.staffForm.addEventListener('submit', async (e) => {
+elements.staffForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (isOffline) {
           alert("Sei offline! Impossibile salvare modifiche al personale.");
@@ -797,12 +840,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const group = document.getElementById('staff-group').value;
       const maxShifts = document.getElementById('staff-max-shifts').value;
       const is_fisso = document.getElementById('staff-fisso').checked;
+      const fa_camere = document.getElementById('staff-fa-camere').checked; // RIGA NUOVA
 
       if (!name || !group) return alert("Dati mancanti");
 
       if (id) {
           const oldPerson = staff.find(p => p.id == id);
-          const { error } = await supabaseClient.from('staff').update({ name, group, maxShifts, is_fisso }).eq('id', id);
+          const { error } = await supabaseClient.from('staff').update({ name, group, maxShifts, is_fisso, fa_camere }).eq('id', id); // RIGA AGGIORNATA
 
           if (!error && oldPerson && oldPerson.name !== name) {
               document.querySelectorAll(`.placed[data-name="${oldPerson.name}"]`).forEach(el => {
@@ -812,7 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
               await saveState(); 
           }
       } else {
-          await supabaseClient.from('staff').insert([{ name, group, maxShifts, is_fisso }]);
+          await supabaseClient.from('staff').insert([{ name, group, maxShifts, is_fisso, fa_camere }]); 
       }
 
       await loadStaff(); 
