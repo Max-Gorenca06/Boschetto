@@ -503,9 +503,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const turno = parts[1];  
     const fasciaSelezionata = fasceOrarie[turno]; 
 
+    // Peschiamo i dati del dipendente SUBITO
+    const datiStaff = staff.find(s => s.name.toLowerCase() === name.toLowerCase());
+
+    // ==========================================
+    // HACK BLOCCO REPARTI (Eccezione MAX)
+    // ==========================================
+    const mioNome = "MAX"; 
+    
+    let sbagliato = false;
+    let messaggioErrore = "";
+    
+    if (datiStaff) {
+        const gruppo = datiStaff.group ? datiStaff.group.toLowerCase() : "";
+        const destinazione = turno.toLowerCase(); 
+
+        // Rilevamento anomalia
+        if (destinazione.includes("cucina") && gruppo === "sala") {
+            sbagliato = true;
+            messaggioErrore = `⛔ Blocco Reparto: ${name} fa parte della Sala e non può essere inserito in Cucina.`;
+        } else if (destinazione.includes("sala") && gruppo === "cucina") {
+            sbagliato = true;
+            messaggioErrore = `⛔ Blocco Reparto: ${name} fa parte della Cucina e non può essere inserito in Sala.`;
+        }
+
+        // Bivio di smistamento
+        if (sbagliato) {
+            if (name.toLowerCase() === mioNome.toLowerCase()) {
+                // Se sei tu, chiediamo il permesso
+                const procedi = confirm(messaggioErrore + "\n\nSei tu, MAX. Vuoi forzare l'inserimento lo stesso?");
+                if (!procedi) return; // Se annulli, blocca. Altrimenti procede.
+            } else {
+                // Per tutti gli altri, blocco diretto
+                alert(messaggioErrore);
+                return; 
+            }
+        }
+    }
+    // ==========================================
+
     if (isDipendenteAssente(name, cellDiv.dataset.cellId)) {
         const procedi = confirm(`⚠️ ATTENZIONE ASSENZA:\n\n"${name}" ha un'assenza registrata in questa data/turno.\n\nVuoi forzare l'inserimento nella griglia lo stesso?`);
-        if (!procedi) return; // Se il capo preme "Annulla", il codice si ferma qui. Se preme "Ok", va avanti e lo inserisce.
+        if (!procedi) return; 
     }
 
     let conflittoTrovato = false;
@@ -535,18 +574,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // AUTOMAZIONE CAMERE
     // ==========================================
-    const datiStaff = staff.find(s => s.name.toLowerCase() === name.toLowerCase());
-    
-    // Se la persona ha il superpotere attivato E il turno è un pranzo
     if (datiStaff && datiStaff.fa_camere) {
         if (turno === 'cucina_pranzo' || turno === 'sala_pranzo') {
             
-            // Cerca la cella delle camere per lo stesso giorno
             const idCellaCamere = `${giorno}-camere`;
             const cellaCamere = document.querySelector(`.cell[data-cell-id="${idCellaCamere}"]`);
             
             if (cellaCamere) {
-                // Controlla che non sia già dentro per evitare doppioni grafici
                 const giaPresente = Array.from(cellaCamere.querySelectorAll('.placed')).some(c => c.dataset.name === name);
                 
                 if (!giaPresente) {
@@ -558,11 +592,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     // ==========================================
+    
     updateAllSidebarCounts();
     saveState();
     
     if (typeof renderMobileView === 'function') renderMobileView();
-  }
+}
 
   elements.gridBody.addEventListener('dragover', e => {
       if (!isLoggedIn) return;
