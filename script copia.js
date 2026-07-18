@@ -387,41 +387,15 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(clickTimer);
             clickTimer = null;
             
-            // Da inserire dentro createPlacedElement(person) per gestire l'eliminazione
-if (confirm(`Vuoi davvero rimuovere ${person.name}?`)) {
-    const parentCell = el.parentElement;
-    const cellId = parentCell.dataset.cellId; // Presuppone che la cella abbia data-cell-id="lunedì-sala_pranzo"
-    
-    // 1. Rimuove la persona dalla cella attuale e aggiorna il contatore locale
-    el.remove();
-    updateCounter(parentCell);
-
-    // 2. Inizia la logica a cascata
-    if (cellId) {
-        const [giorno, turno] = cellId.split('-');
-        
-        // Se la disdetta avviene nel turno principale (Pranzo)
-        if (turno === 'sala_pranzo' || turno === 'cucina_pranzo') {
-            
-            // Trova la cella delle camere per quello stesso giorno
-            const camereCell = document.querySelector(`[data-cell-id="${giorno}-camere"]`);
-            
-            if (camereCell) {
-                // Cerca l'elemento "clone" della persona nelle camere
-                const targetEl = camereCell.querySelector(`.placed[data-name="${person.name}"]`);
-                
-                // Se lo trova, lo elimina e aggiorna il contatore di quella specifica cella
-                if (targetEl) {
-                    targetEl.remove();
-                    updateCounter(camereCell);
-                }
+            if (confirm(`Rimuovere "${person.name}"?`)) {
+                const parent = el.parentElement;
+                el.remove();
+                updateCellCounter(parent);
+                saveState().then(() => {
+                    updateAllSidebarCounts();
+                    if (typeof renderMobileView === 'function') renderMobileView(); 
+                });
             }
-        }
-    }
-    
-    // 3. Salva lo stato generale con la griglia già pulita
-    saveState();
-    }
         } else {
             clickTimer = setTimeout(() => {
                 const giaInDubbio = el.classList.contains('in-dubbio');
