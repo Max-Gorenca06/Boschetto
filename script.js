@@ -389,38 +389,46 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Da inserire dentro createPlacedElement(person) per gestire l'eliminazione
 if (confirm(`Vuoi davvero rimuovere ${person.name}?`)) {
-    const parentCell = el.parentElement;
-    const cellId = parentCell.dataset.cellId; // Presuppone che la cella abbia data-cell-id="lunedì-sala_pranzo"
-    
-    // 1. Rimuove la persona dalla cella attuale e aggiorna il contatore locale
-    el.remove();
-    updateCounter(parentCell);
+    // 1. Individua la cella di partenza e le sue informazioni
+            const parentCell = el.closest('.cell');
+            const cellId = parentCell ? parentCell.dataset.cellId : null;
+            
+            // 2. Rimuove la persona dal turno attuale
+            el.remove();
+            if (parentCell) updateCellCounter(parentCell);
 
-    // 2. Inizia la logica a cascata
-    if (cellId) {
-        const [giorno, turno] = cellId.split('-');
-        
-        // Se la disdetta avviene nel turno principale (Pranzo)
-        if (turno === 'sala_pranzo' || turno === 'cucina_pranzo') {
-            
-            // Trova la cella delle camere per quello stesso giorno
-            const camereCell = document.querySelector(`[data-cell-id="${giorno}-camere"]`);
-            
-            if (camereCell) {
-                // Cerca l'elemento "clone" della persona nelle camere
-                const targetEl = camereCell.querySelector(`.placed[data-name="${person.name}"]`);
+            // 3. Logica a due vie (Pranzo <-> Camere)
+            if (cellId) {
+                const [giorno, turno] = cellId.split('-');
                 
-                // Se lo trova, lo elimina e aggiorna il contatore di quella specifica cella
-                if (targetEl) {
-                    targetEl.remove();
-                    updateCounter(camereCell);
+                // CASO A: Se togli da Pranzo (Sala o Cucina), cancella da Camere
+                if (turno === 'sala_pranzo' || turno === 'cucina_pranzo') {
+                    const camereCell = document.querySelector(`.cell[data-cell-id="${giorno}-camere"]`);
+                    if (camereCell) {
+                        const targetEl = camereCell.querySelector(`.placed[data-name="${person.name}"]`);
+                        if (targetEl) {
+                            targetEl.remove();
+                            updateCellCounter(camereCell);
+                        }
+                    }
+                } 
+                // CASO B: Se togli da Camere, cancella dai turni di Pranzo di quel giorno
+                else if (turno === 'camere') {
+                    const pranzoCells = document.querySelectorAll(`.cell[data-cell-id="${giorno}-sala_pranzo"], .cell[data-cell-id="${giorno}-cucina_pranzo"]`);
+                    pranzoCells.forEach(pCell => {
+                        const targetEl = pCell.querySelector(`.placed[data-name="${person.name}"]`);
+                        if (targetEl) {
+                            targetEl.remove();
+                            updateCellCounter(pCell);
+                        }
+                    });
                 }
             }
-        }
-    }
-    
-    // 3. Salva lo stato generale con la griglia già pulita
-    saveState();
+            
+            // 4. Salva il DB e aggiorna il pannello laterale
+            saveState();
+            updateAllSidebarCounts();
+            if (typeof renderMobileView === 'function') renderMobileView();
     }
         } else {
             clickTimer = setTimeout(() => {
