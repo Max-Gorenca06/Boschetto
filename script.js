@@ -581,6 +581,22 @@ if (confirm(`Vuoi davvero rimuovere ${person.name}?`)) {
         if (!procedi) return; 
     }
 
+    if (datiStaff && !datiStaff.is_fisso) {
+        const celleDipendente = document.querySelectorAll(`.placed[data-name="${name}"]`);
+        const giorniAssegnati = new Set();
+        celleDipendente.forEach(c => {
+            const pCell = c.closest('.cell');
+            if (pCell && pCell.dataset.cellId) {
+                giorniAssegnati.add(pCell.dataset.cellId.split('-')[0]);
+            }
+        });
+        
+        if (giorniAssegnati.size >= 6 && !giorniAssegnati.has(giorno)) {
+            const conferma7 = confirm(`⚠️ ATTENZIONE LEGALE:\n\nIl dipendente ${name} è con contratto a CHIAMATA e sta per essere inserito per il 7° giorno in questa settimana.\nLe regole legali prevedono al massimo 6 giorni su 7 per i contratti a chiamata.\n\nVuoi davvero forzare l'inserimento?`);
+            if (!conferma7) return;
+        }
+    }
+
     let conflittoTrovato = false;
     let nomeTurnoConflitto = "";
 
